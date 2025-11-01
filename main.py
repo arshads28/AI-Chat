@@ -81,7 +81,16 @@ async def llm_response(thread_id: str, request: ChatRequest):
 
     logger.info(f" user message is : {request.input}")
 
-    config = {"configurable": {"thread_id": thread_id}}
+    # Configuration for the graph:
+    # 'thread_id' is the key for persistence
+    # 'model_name' is passed to our agent_node
+    config = {
+        "configurable": {
+            "thread_id": thread_id,
+            "model_name": request.model_name
+        }
+    }
+
     
     # Use 'ainvoke' since this is an async function
     # resp = await langgraph_app.ainvoke( {'topic': request.input}, config=config)
