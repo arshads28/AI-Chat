@@ -309,6 +309,14 @@ async function handleSubmit(e) {
     const assistantMessageDiv = addMessage('assistant', '', true);
     let fullResponse = "";
 
+    // --- GATHER CLIENT INFO ---
+    const clientData = {
+        userAgent: navigator.userAgent,
+        language: navigator.language,
+        connection: navigator.connection ? navigator.connection.effectiveType : 'unknown',
+        screenWidth: window.screen.width,
+        screenHeight: window.screen.height
+    };
     try {
         const response = await fetch('/chat/', { 
             method: 'POST',
@@ -316,7 +324,8 @@ async function handleSubmit(e) {
             body: JSON.stringify({
                 input: message,
                 model_name: modelName,
-                thread_id: currentThreadId 
+                thread_id: currentThreadId ,
+                client_data: clientData
             })
         });
 

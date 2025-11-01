@@ -3,12 +3,12 @@ import json
 import uvicorn
 import uuid
 import aiosqlite
-from fastapi import FastAPI, HTTPException, Request # <-- Add Request
-from fastapi.responses import StreamingResponse, HTMLResponse, RedirectResponse # <-- Add RedirectResponse
+from fastapi import FastAPI, HTTPException, Request 
+from fastapi.responses import StreamingResponse, HTMLResponse, RedirectResponse 
 from pydantic import BaseModel
 from langchain_core.messages import HumanMessage
 from contextlib import asynccontextmanager
-from typing import Optional
+from typing import Any, Dict, Optional
 
 # Import the graph definition and the async checkpointer
 from agent import workflow_
@@ -66,6 +66,7 @@ class ChatRequest(BaseModel):
     input: str
     model_name: str
     thread_id: Optional[str] = None 
+    client_data: Optional[Dict[str, Any]] = None
 
 @app.get("/")
 async def get_root(request: Request): # <-- Add Request
@@ -147,15 +148,23 @@ async def llm_response(thread_id: str, request: ChatRequest):
 
 
 @app.post("/chat/")
-async def chat_invoke(request: ChatRequest):
+async def chat_invoke(chat_request: ChatRequest, request: Request):
     """
     POST endpoint to get a single, complete chat response.
     """
-    thread_id = request.thread_id
+    # Get IP from the raw Request object
+    ip = request.client.host
+    logger.info(f"User IP is: {ip}")
+    
+    # Get data from the Pydantic body model (now named 'chat_request')
+    client_details = chat_request.client_data
+    logger.info(f"user details is : {client_details}")
 
+    thread_id = chat_request.thread_id
     logger.info(f"Received request for thread: {thread_id}")
     
-    return await llm_response(thread_id, request)
+    # Pass the Pydantic model to your logic function
+    return await llm_response(thread_id, chat_request)
 
 
 
