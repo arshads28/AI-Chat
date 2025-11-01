@@ -87,7 +87,8 @@ async def llm_response(thread_id: str, request: ChatRequest):
     config = {
         "configurable": {
             "thread_id": thread_id,
-            "model_name": request.model_name
+            "model_name": request.model_name,
+            "recursion_limit": 30
         }
     }
 
