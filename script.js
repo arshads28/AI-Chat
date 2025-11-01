@@ -249,7 +249,7 @@ function addMessage(sender, message, isStreaming = false) {
     content.classList.add('flex-1', 'space-y-2');
     
     const messageContent = document.createElement('div');
-    messageContent.classList.add('prose', 'prose-invert', 'text-gray-100');
+    messageContent.classList.add('prose', 'prose-invert');
     
     if (sender === 'user') {
         messageContent.textContent = message;
@@ -303,8 +303,8 @@ async function handleSubmit(e) {
     inputContainer.classList.add('rounded-full');
     inputContainer.classList.remove('rounded-3xl');
     
-    sendButton.disabled = true;
-    messageInput.disabled = true;
+    // sendButton.disabled = true;
+    // messageInput.disabled = true;
 
     const assistantMessageDiv = addMessage('assistant', '', true);
     let fullResponse = "";
@@ -349,8 +349,8 @@ async function handleSubmit(e) {
         assistantMessageDiv.innerHTML = marked.parse(fullResponse);
         chatWindow.scrollTop = chatWindow.scrollHeight;
         
-        sendButton.disabled = false;
-        messageInput.disabled = false;
+        // sendButton.disabled = false;
+        // messageInput.disabled = false;
         messageInput.focus();
     }
 }
