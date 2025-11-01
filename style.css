@@ -3,17 +3,68 @@
     to { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes blink {
-    50% { opacity: 0; }
+/* New gradient animation */
+@keyframes gradient-move {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+.loading-cursor {
+    display: inline-flex; /* Use flex to center SVG */
+    align-items: center;
+    justify-content: center;
+    width: 24px; /* Size of the container */
+    height: 24px; /* Size of the container */
+    border-radius: 50%; /* Make it a circle */
+    overflow: hidden; /* Hide parts of gradient that go outside */
+    position: relative;
+    vertical-align: middle; /* Align with text baseline */
+    flex-shrink: 0; /* Prevent shrinking in flex container */
+}
+
+.loading-cursor::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    /* Gradient colors, adjust as desired */
+    background: linear-gradient(
+        60deg,
+        #f24646, /* Yellow */
+        #ecea5e, /* Emerald */
+        #56ec4b, /* Teal */
+        #5cecfc, /* Indigo */
+        #3f61f8, /* Violet */
+        #f65ed5 /* Repeat for seamless loop */
+    );
+    background-size: 200% 200%; /* Important for animation */
+    animation: gradient-move 3s linear infinite; /* Adjust speed (3s) */
+    z-index: 0;
+}
+
+.loading-cursor svg {
+    position: relative;
+    z-index: 1; /* Keep SVG above the gradient */
+    width: 14px; /* Size of the star icon */
+    height: 14px;
+    color: rgb(254, 144, 144); /* Color of the star */
+    /* Add a subtle shadow for contrast if needed */
+    filter: drop-shadow(0 1px 1px rgba(0,0,0,0.3));
+}
+
+/* Light mode adjustments for the star color if necessary, 
+   though white often works well on moving gradients */
+body.light-mode .loading-cursor svg {
+    color: rgb(169, 210, 236); 
 }
 
 .message-animation {
     animation: fadeIn 0.3s ease-out;
 }
 
-.cursor {
-    animation: blink 1s step-end infinite;
-}
 
 .prose { max-width: none; }
 .prose :first-child { margin-top: 0; }

@@ -254,8 +254,13 @@ function addMessage(sender, message, isStreaming = false) {
         messageContent.textContent = message;
     } else {
         if (isStreaming) {
-            messageContent.innerHTML = '<span class="cursor">▋</span>';
-        } else {
+                    messageContent.innerHTML = `
+                        <span class="loading-cursor">
+                            <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M12 2L9.19 8.63L2 9.24L7.45 14L5.82 21L12 17.27L18.18 21L16.55 14L22 9.24L14.81 8.63L12 2Z"/>
+                            </svg>
+                        </span>`;
+                } else {
             messageContent.innerHTML = marked.parse(message);
         }
     }
