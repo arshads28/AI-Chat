@@ -25,6 +25,7 @@ let chats = {};
 
 // Theme management
 let isDarkMode = true;
+let isMobile = window.innerWidth <= 768;
 
 // Toggle theme
 themeToggle.addEventListener('click', () => {
@@ -356,8 +357,34 @@ async function handleSubmit(e) {
 
 chatForm.addEventListener('submit', handleSubmit);
 
+
+// Add resize listener to enforce default states when crossing breakpoints
+window.addEventListener('resize', () => {
+    const wasMobile = isMobile;
+    isMobile = window.innerWidth <= 768;
+
+    if (wasMobile === isMobile) {
+        return; 
+    }
+
+    if (isMobile) {
+        // Crossed TO MOBILE: Set default 'closed'
+        sidebar.classList.add('is-closed');
+        overlay.classList.add('hidden');
+        body.classList.remove('sidebar-open');
+    } else {
+        // Crossed TO DESKTOP: Set default 'open'
+        sidebar.classList.remove('is-closed');
+        // Always clean up mobile-specific elements
+        overlay.classList.add('hidden');
+        body.classList.remove('sidebar-open');
+    }
+});
+
 // --- SET DEFAULT STATE ---
-sidebar.classList.add('is-closed'); // Start collapsed by default
+if (window.innerWidth <= 768) {
+    sidebar.classList.add('is-closed'); // Close by default on mobile
+}
 
 createNewChat();
 messageInput.focus();
