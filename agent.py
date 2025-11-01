@@ -41,7 +41,8 @@ if gemini_api_key:
     gemini_model_flash = ChatGoogleGenerativeAI(
         model="models/gemini-2.5-flash", 
         streaming=True, 
-        google_api_key=gemini_api_key
+        google_api_key=gemini_api_key,
+        temperature = 0
     )
     
     gemini_with_tools_flash = gemini_model_flash.bind_tools(tools)
@@ -57,7 +58,8 @@ if gemini_api_key:
     gemini_model_flash_lite = ChatGoogleGenerativeAI(
         model="models/gemini-2.5-flash-lite", 
         streaming=True, 
-        google_api_key=gemini_api_key
+        google_api_key=gemini_api_key,
+        temperature = 0
     )
     
     gemini_with_tools_flash_lite = gemini_model_flash_lite.bind_tools(tools)
@@ -131,7 +133,7 @@ def agent_node(state: MessagesState, config: RunnableConfig):
 
     messages = state['messages']
     prompt = [
-        SystemMessage(content="You are a Ai agent and your name is CORE ,  if question is related to weather use tool calling, else answer it according to user as experience person."),
+        SystemMessage(content="You are a Ai agent and your name is CORE ,  if question is related to weather or date/time use tool calling, else answer it according to user as experience person. Give the response in proper formatting"),
         HumanMessage(content=f"""  {messages}   """)
     ]
     
