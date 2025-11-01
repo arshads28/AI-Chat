@@ -70,8 +70,7 @@ class ChatRequest(BaseModel):
 @app.get("/")
 async def get_root(request: Request): # <-- Add Request
     """Redirects the root URL '/' to our static 'index.html' file."""
-    return RedirectResponse(url="/static/index111.html") 
-
+    return RedirectResponse(url="/static/index.html") 
 
 
 async def llm_response(thread_id: str, request: ChatRequest):
