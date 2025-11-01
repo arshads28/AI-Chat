@@ -3,7 +3,9 @@ import json
 import uvicorn
 import uuid
 import aiosqlite
-from fastapi import FastAPI, HTTPException, Request 
+import secrets
+
+from fastapi import FastAPI, HTTPException, Request, Depends
 from fastapi.responses import StreamingResponse, HTMLResponse, RedirectResponse 
 from pydantic import BaseModel
 from langchain_core.messages import HumanMessage
@@ -17,12 +19,6 @@ from fastapi.staticfiles import StaticFiles # <-- Add StaticFiles
 
 # Setup logging
 logger = logging.getLogger("agent")
-
-
-class ChatRequest(BaseModel):
-    input: str
-    model_name: str
-    thread_id: Optional[str] = None  # <-- Make this optional
 
 
 # This will hold our compiled-with-persistence app
@@ -67,12 +63,25 @@ class ChatRequest(BaseModel):
     model_name: str
     thread_id: Optional[str] = None 
     client_data: Optional[Dict[str, Any]] = None
+    csrf_token: str
+
+# CSRF token storage (in production, use Redis or database)
+csrf_tokens = set()
 
 @app.get("/")
-async def get_root(request: Request): # <-- Add Request
+async def get_root(request: Request):
     """Redirects the root URL '/' to our static 'index.html' file."""
-    return RedirectResponse(url="/static/index.html") 
+    return RedirectResponse(url="/static/index.html")
 
+@app.get("/csrf-token")
+async def get_csrf_token():
+    """Generate and return a CSRF token."""
+    token = secrets.token_urlsafe(32)
+    logger.info(f"Generate and return a CSRF token")
+    csrf_tokens.add(token)
+    return {"csrf_token": token}
+
+ 
 
 async def llm_response(thread_id: str, request: ChatRequest):
 
@@ -148,10 +157,28 @@ async def llm_response(thread_id: str, request: ChatRequest):
 
 
 @app.post("/chat/")
-async def chat_invoke(chat_request: ChatRequest, request: Request):
+async def chat_invoke(request: Request):
     """
     POST endpoint to get a single, complete chat response.
     """
+    # Debug: Log raw request body
+    body = await request.body()
+    logger.info(f"Raw request body: {body.decode()}")
+    
+    try:
+        data = await request.json()
+        chat_request = ChatRequest(**data)
+        
+        logger.info(f"CSFR req{chat_request.csrf_token} == set{csrf_tokens} ")
+        # Validate CSRF token
+        if chat_request.csrf_token not in csrf_tokens:
+            raise HTTPException(status_code=403, detail="Invalid CSRF token")
+        # csrf_tokens.discard(chat_request.csrf_token)
+        
+    except Exception as e:
+        logger.error(f"Validation error: {e}")
+        raise HTTPException(status_code=422, detail=str(e))
+    
     # Get IP from the raw Request object
     ip = request.client.host
     logger.info(f"User IP is: {ip}")

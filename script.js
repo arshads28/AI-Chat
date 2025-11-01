@@ -22,6 +22,7 @@ const inputContainer = document.getElementById('input-container');
 // Chat management
 let currentThreadId = null;
 let chats = {};
+let csrfToken = null;
 
 // Theme management
 let isDarkMode = true;
@@ -273,6 +274,15 @@ function addMessage(sender, message, isStreaming = false) {
     return messageContent;
 }
 
+async function getCSRFToken() {
+
+    const response = await fetch('/csrf-token');
+    const data = await response.json();
+        csrfToken = data.csrf_token;
+    
+    return csrfToken;
+}
+
 async function handleSubmit(e) {
     e.preventDefault();
     
@@ -316,6 +326,7 @@ async function handleSubmit(e) {
         screenHeight: window.screen.height
     };
     try {
+        const token = await getCSRFToken();
         const response = await fetch('/chat/', { 
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -323,7 +334,8 @@ async function handleSubmit(e) {
                 input: message,
                 model_name: modelName,
                 thread_id: currentThreadId ,
-                client_data: clientData
+                client_data: clientData,
+                csrf_token: token
             })
         });
 
@@ -351,6 +363,7 @@ async function handleSubmit(e) {
         
     } catch (err) {
         console.error('Fetch error:', err);
+        csrfToken = null; 
         fullResponse = `**Sorry, an error occurred:** ${err.message}`;
     } finally {
         assistantMessageDiv.innerHTML = marked.parse(fullResponse);
