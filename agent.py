@@ -11,7 +11,7 @@ from typing_extensions import TypedDict
 from langgraph.graph import StateGraph, END, START
 from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode
-from langchain_core.messages import BaseMessage  #HumanMessage
+from langchain_core.messages import BaseMessage ,SystemMessage, HumanMessage
 
 from tools import tools
 
@@ -130,9 +130,13 @@ def agent_node(state: MessagesState, config: RunnableConfig):
     logger.info(f"Using model: {model_name}")
 
     messages = state['messages']
+    prompt = [
+        SystemMessage(content="You are a Expert docter , if question is related to coding answer it as experience engineer, if question is related to weather use tool calling, else answer it according to user as experience person."),
+        HumanMessage(content=f"""  {messages}   """)
+    ]
     
     # Invoke the model with the current state
-    response = model.invoke(messages)
+    response = model.invoke(prompt)
     
     # The response store in state
     return {"messages": [response]}
