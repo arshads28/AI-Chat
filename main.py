@@ -173,7 +173,7 @@ async def chat_invoke(request: Request):
         # Validate CSRF token
         if chat_request.csrf_token not in csrf_tokens:
             raise HTTPException(status_code=403, detail="Invalid CSRF token")
-        # csrf_tokens.discard(chat_request.csrf_token)
+        csrf_tokens.discard(chat_request.csrf_token)
         
     except Exception as e:
         logger.error(f"Validation error: {e}")
