@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Chat Agent</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        /* Simple blinking cursor animation */
+        @keyframes blink {
+            50% { opacity: 0; }
+        }
+        .cursor {
+            animation: blink 1s step-end infinite;
+        }
+        /* Style for markdown content */
+        .prose :first-child { margin-top: 0; }
+        .prose :last-child { margin-bottom: 0; }
+    </style>
+</head>
+<body class="bg-gray-900 text-white font-sans flex flex-col h-screen">
+
+    <header class="bg-gray-800 p-4 border-b border-gray-700 flex justify-between items-center shadow-md">
+        <h1 class="text-xl font-bold">Production AI Agent</h1>
+        <div class="flex items-center space-x-2">
+            <label for="model-select" class="text-sm font-medium">Model:</label>
+            <select id="model-select" class="bg-gray-700 border border-gray-600 rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="gemini">Gemini</option>
+                <option value="openai">OpenAI (GPT-4o)</option>
+            </select>
+        </div>
+    </header>
+
+    <main id="chat-window" class="flex-1 overflow-y-auto p-4 space-y-4">
+        <div class="bg-gray-700 text-white p-3 rounded-lg max-w-lg mr-auto prose prose-invert">
+            <p>Hello! I'm your AI agent. How can I help you today?</p>
+        </div>
+    </main>
+
+    <footer class="bg-gray-800 p-4 border-t border-gray-700 shadow-inner">
+        <form id="chat-form" class="flex items-center space-x-2">
+            <input 
+                type="text" 
+                id="message-input"
+                placeholder="Type your message..."
+                autocomplete="off"
+                class="flex-1 bg-gray-700 border border-gray-600 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+            <button 
+                type="submit"
+                class="bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+            >
+                Send
+            </button>
+        </form>
+    </footer>
+
+    <script>
+        // Get DOM elements
+        const chatWindow = document.getElementById('chat-window');
+        const chatForm = document.getElementById('chat-form');
+        const messageInput = document.getElementById('message-input');
+        const modelSelect = document.getElementById('model-select');
+        const sendButton = chatForm.querySelector('button');
+
+        // Start with a null threadId for a new chat
+        let threadId = null;
+
+        /**
+         * Creates and appends a new message bubble to the chat window.
+         * @param {string} sender - 'user' or 'assistant'
+         * @param {string} message - The message content (HTML or plain text)
+         * @returns {HTMLElement} - The created message element
+         */
+        function addMessage(sender, message) {
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('p-3', 'rounded-lg', 'max-w-lg');
+            
+            if (sender === 'user') {
+                messageElement.classList.add('bg-blue-600', 'text-white', 'ml-auto');
+                messageElement.textContent = message; // User message is plain text
+            } else {
+                messageElement.classList.add('bg-gray-700', 'text-white', 'mr-auto', 'prose', 'prose-invert');
+                // Render markdown content for assistant
+                messageElement.innerHTML = marked.parse(message);
+            }
+            
+            chatWindow.appendChild(messageElement);
+            // Auto-scroll to the bottom
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+            return messageElement;
+        }
+
+        /**
+         * Handles the form submission
+         */
+        async function handleSubmit(e) {
+            e.preventDefault();
+            
+            const message = messageInput.value.trim();
+            const modelName = modelSelect.value;
+            if (!message) return;
+
+            // 1. Add user's message to the UI
+            addMessage('user', message);
+
+            // 2. Clear input and disable form
+            messageInput.value = '';
+            sendButton.disabled = true;
+            messageInput.disabled = true;
+
+            // 3. Create a placeholder for the assistant's streaming response
+            const assistantMessageDiv = addMessage('assistant', '<span class="cursor">▋</span>');
+            let fullResponse = "";
+
+            try {
+                // 4. Send the POST request to the *static* /chat/ endpoint
+                const response = await fetch('/chat/', { 
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    // **MODIFIED:** Send threadId in the body
+                    // It will be 'null' for the first request
+                    body: JSON.stringify({
+                        input: message,
+                        model_name: modelName,
+                        thread_id: threadId 
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                // 5. Read the response body
+                const data = await response.json();
+
+                // 6. Access the 'response' key
+                if (data.final_message) { 
+                    fullResponse = data.final_message;
+                } else if (data.error) {
+                    fullResponse = `**Error:** ${data.error}`;
+                } else {
+                    fullResponse = data.response || "Sorry, I received an empty response.";
+                }
+
+                // 7. Update the threadId from the response
+                // The backend should create an ID on the first request and return it
+                if (data.thread_id) {
+                    threadId = data.thread_id; 
+                }
+            } catch (err) {
+                console.error('Fetch error:', err);
+                fullResponse = `**Sorry, an error occurred:** ${err.message}`;
+            } finally {
+                // 8. Finalize the assistant message (remove cursor)
+                assistantMessageDiv.innerHTML = marked.parse(fullResponse);
+                chatWindow.scrollTop = chatWindow.scrollHeight;
+                
+                // 9. Re-enable the form
+                sendButton.disabled = false;
+                messageInput.disabled = false;
+                messageInput.focus();
+            }
+        }
+
+        // Attach event listener
+        chatForm.addEventListener('submit', handleSubmit);
+    </script>
+</body>
+</html>

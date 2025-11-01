@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Chat</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes blink {
+            50% { opacity: 0; }
+        }
+        
+        .message-animation {
+            animation: fadeIn 0.3s ease-out;
+        }
+        
+        .cursor {
+            animation: blink 1s step-end infinite;
+        }
+        
+        .prose { max-width: none; }
+        .prose :first-child { margin-top: 0; }
+        .prose :last-child { margin-bottom: 0; }
+        .prose p { margin: 0.5rem 0; }
+        .prose ul, .prose ol { margin: 0.5rem 0; padding-left: 1.5rem; }
+        .prose pre { background: #1f2937; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; }
+        .prose code { background: #374151; padding: 0.2rem 0.4rem; border-radius: 0.25rem; }
+        .prose pre code { background: transparent; padding: 0; }
+        
+        #chat-window::-webkit-scrollbar { width: 8px; }
+        #chat-window::-webkit-scrollbar-track { background: #1f2937; }
+        #chat-window::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
+        #chat-window::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+        
+        .input-wrapper { position: relative; }
+        .send-button {
+            transition: all 0.2s ease;
+        }
+        .send-button:not(:disabled):hover {
+            transform: scale(1.05);
+        }
+        
+        /* Avatar styles */
+        .avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+        
+        .user-avatar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .assistant-avatar {
+            background: #10a37f;
+        }
+        
+        /* New chat button */
+        .new-chat-btn {
+            transition: all 0.2s ease;
+        }
+        .new-chat-btn:hover {
+            background: #374151;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white font-sans flex flex-col h-screen">
+
+    <!-- Header -->
+    <header class="bg-gray-800 border-b border-gray-700 px-4 py-3 flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+            <button id="new-chat-btn" class="new-chat-btn px-3 py-2 rounded-lg border border-gray-600 text-sm font-medium hover:bg-gray-700 transition">
+                + New chat
+            </button>
+            <h1 class="text-lg font-semibold">AI Assistant</h1>
+        </div>
+        
+        <div class="flex items-center space-x-3">
+            <select id="model-select" class="bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="gemini">Gemini</option>
+                <option value="openai">GPT-4o</option>
+            </select>
+        </div>
+    </header>
+
+    <!-- Chat Window -->
+    <main id="chat-window" class="flex-1 overflow-y-auto">
+        <div class="max-w-3xl mx-auto px-4 py-6">
+            <!-- Welcome message -->
+            <div class="message-animation flex gap-4 mb-6">
+                <div class="avatar assistant-avatar">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                    </svg>
+                </div>
+                <div class="flex-1 space-y-2">
+                    <div class="prose prose-invert text-gray-100">
+                        <p>Hello! I'm your AI assistant. How can I help you today?</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Input Footer -->
+    <footer class="border-t border-gray-700 bg-gray-800">
+        <div class="max-w-3xl mx-auto px-4 py-4">
+            <form id="chat-form" class="relative">
+                <div class="input-wrapper flex items-end bg-gray-700 rounded-xl border border-gray-600 focus-within:border-gray-500 transition">
+                    <textarea 
+                        id="message-input"
+                        placeholder="Message AI Assistant..."
+                        rows="1"
+                        class="flex-1 bg-transparent px-4 py-3 focus:outline-none resize-none max-h-48 overflow-y-auto"
+                        style="min-height: 52px;"
+                    ></textarea>
+                    <button 
+                        type="submit"
+                        id="send-button"
+                        class="send-button m-2 p-2 rounded-lg bg-gray-600 hover:bg-gray-500 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                    >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="22" y1="2" x2="11" y2="13"></line>
+                            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                        </svg>
+                    </button>
+                </div>
+                <p class="text-xs text-gray-400 text-center mt-2">AI can make mistakes. Check important info.</p>
+            </form>
+        </div>
+    </footer>
+
+    <script>
+        // DOM elements
+        const chatWindow = document.getElementById('chat-window');
+        const chatForm = document.getElementById('chat-form');
+        const messageInput = document.getElementById('message-input');
+        const modelSelect = document.getElementById('model-select');
+        const sendButton = document.getElementById('send-button');
+        const newChatBtn = document.getElementById('new-chat-btn');
+        
+        let threadId = null;
+
+        // Auto-resize textarea
+        messageInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 192) + 'px';
+        });
+
+        // Handle Enter key (send), Shift+Enter (new line)
+        messageInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                chatForm.dispatchEvent(new Event('submit'));
+            }
+        });
+
+        // New chat button
+        newChatBtn.addEventListener('click', function() {
+            threadId = null;
+            const container = chatWindow.querySelector('.max-w-3xl');
+            container.innerHTML = `
+                <div class="message-animation flex gap-4 mb-6">
+                    <div class="avatar assistant-avatar">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                        </svg>
+                    </div>
+                    <div class="flex-1 space-y-2">
+                        <div class="prose prose-invert text-gray-100">
+                            <p>Hello! I'm your AI assistant. How can I help you today?</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            messageInput.focus();
+        });
+
+        function addMessage(sender, message, isStreaming = false) {
+            const container = chatWindow.querySelector('.max-w-3xl');
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message-animation', 'flex', 'gap-4', 'mb-6');
+            
+            const avatar = document.createElement('div');
+            avatar.classList.add('avatar');
+            
+            if (sender === 'user') {
+                avatar.classList.add('user-avatar');
+                avatar.textContent = 'U';
+            } else {
+                avatar.classList.add('assistant-avatar');
+                avatar.innerHTML = `
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                    </svg>
+                `;
+            }
+            
+            const content = document.createElement('div');
+            content.classList.add('flex-1', 'space-y-2');
+            
+            const messageContent = document.createElement('div');
+            messageContent.classList.add('prose', 'prose-invert', 'text-gray-100');
+            
+            if (sender === 'user') {
+                messageContent.textContent = message;
+            } else {
+                if (isStreaming) {
+                    messageContent.innerHTML = '<span class="cursor">▋</span>';
+                } else {
+                    messageContent.innerHTML = marked.parse(message);
+                }
+            }
+            
+            content.appendChild(messageContent);
+            messageDiv.appendChild(avatar);
+            messageDiv.appendChild(content);
+            container.appendChild(messageDiv);
+            
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+            return messageContent;
+        }
+
+        async function handleSubmit(e) {
+            e.preventDefault();
+            
+            const message = messageInput.value.trim();
+            const modelName = modelSelect.value;
+            if (!message) return;
+
+            addMessage('user', message);
+            
+            messageInput.value = '';
+            messageInput.style.height = 'auto';
+            sendButton.disabled = true;
+            messageInput.disabled = true;
+
+            const assistantMessageDiv = addMessage('assistant', '', true);
+            let fullResponse = "";
+
+            try {
+                const response = await fetch('/chat/', { 
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        input: message,
+                        model_name: modelName,
+                        thread_id: threadId 
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                if (data.final_message) { 
+                    fullResponse = data.final_message;
+                } else if (data.error) {
+                    fullResponse = `**Error:** ${data.error}`;
+                } else {
+                    fullResponse = data.response || "Sorry, I received an empty response.";
+                }
+
+                if (data.thread_id) {
+                    threadId = data.thread_id; 
+                }
+            } catch (err) {
+                console.error('Fetch error:', err);
+                fullResponse = `**Sorry, an error occurred:** ${err.message}`;
+            } finally {
+                assistantMessageDiv.innerHTML = marked.parse(fullResponse);
+                chatWindow.scrollTop = chatWindow.scrollHeight;
+                
+                sendButton.disabled = false;
+                messageInput.disabled = false;
+                messageInput.focus();
+            }
+        }
+
+        chatForm.addEventListener('submit', handleSubmit);
+        messageInput.focus();
+    </script>
+</body>
+</html>
