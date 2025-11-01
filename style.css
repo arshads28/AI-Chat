@@ -3,24 +3,41 @@
     to { opacity: 1; transform: translateY(0); }
 }
 
-/* New gradient animation */
+/* Enhanced gradient and pulse animations */
 @keyframes gradient-move {
     0% { background-position: 0% 50%; }
     50% { background-position: 100% 50%; }
     100% { background-position: 0% 50%; }
 }
 
+@keyframes pulse-glow {
+    0%, 100% { 
+        transform: scale(1);
+        box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+    }
+    50% { 
+        transform: scale(1.1);
+        box-shadow: 0 0 20px rgba(255, 255, 255, 0.6);
+    }
+}
+
+@keyframes star-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
 .loading-cursor {
-    display: inline-flex; /* Use flex to center SVG */
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 24px; /* Size of the container */
-    height: 24px; /* Size of the container */
-    border-radius: 50%; /* Make it a circle */
-    overflow: hidden; /* Hide parts of gradient that go outside */
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    overflow: hidden;
     position: relative;
-    vertical-align: middle; /* Align with text baseline */
-    flex-shrink: 0; /* Prevent shrinking in flex container */
+    vertical-align: middle;
+    flex-shrink: 0;
+    animation: pulse-glow 1.5s ease-in-out infinite;
 }
 
 .loading-cursor::before {
@@ -30,35 +47,35 @@
     left: -50%;
     width: 200%;
     height: 200%;
-    /* Gradient colors, adjust as desired */
     background: linear-gradient(
-        60deg,
-        #f24646, /* Yellow */
-        #ecea5e, /* Emerald */
-        #56ec4b, /* Teal */
-        #5cecfc, /* Indigo */
-        #3f61f8, /* Violet */
-        #f65ed5 /* Repeat for seamless loop */
+        45deg,
+        #ff0080, /* Hot pink */
+        #ff8c00, /* Orange */
+        #ffd700, /* Gold */
+        #00ff80, /* Bright green */
+        #00bfff, /* Deep sky blue */
+        #8a2be2, /* Blue violet */
+        #ff1493, /* Deep pink */
+        #ff0080  /* Loop back */
     );
-    background-size: 200% 200%; /* Important for animation */
-    animation: gradient-move 3s linear infinite; /* Adjust speed (3s) */
+    background-size: 300% 300%;
+    animation: gradient-move 1.5s linear infinite;
     z-index: 0;
 }
 
 .loading-cursor svg {
     position: relative;
-    z-index: 1; /* Keep SVG above the gradient */
-    width: 14px; /* Size of the star icon */
-    height: 14px;
-    color: rgb(254, 144, 144); /* Color of the star */
-    /* Add a subtle shadow for contrast if needed */
-    filter: drop-shadow(0 1px 1px rgba(0,0,0,0.3));
+    z-index: 1;
+    width: 16px;
+    height: 16px;
+    color: white;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+    animation: star-spin 2s linear infinite;
 }
 
-/* Light mode adjustments for the star color if necessary, 
-   though white often works well on moving gradients */
 body.light-mode .loading-cursor svg {
-    color: rgb(169, 210, 236); 
+    color: white;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.7));
 }
 
 .message-animation {
