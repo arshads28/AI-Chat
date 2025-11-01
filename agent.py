@@ -1,16 +1,17 @@
 import os
 import logging
 
-from typing import Annotated, Literal
+from typing import Annotated #Literal
 
-from pydantic import BaseModel, Field 
-from langchain_openai import ChatOpenAI
+# from pydantic import BaseModel, Field 
+# from langchain_openai import ChatOpenAI
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_core.runnables import RunnableConfig
 from typing_extensions import TypedDict
 from langgraph.graph import StateGraph, END, START
 from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode
-from langchain_core.messages import BaseMessage, HumanMessage
+from langchain_core.messages import BaseMessage  #HumanMessage
 
 from tools import tools
 
@@ -26,6 +27,8 @@ class MessagesState(TypedDict):
     
     messages: Annotated[list[BaseMessage], add_messages]
 
+available_models = {}
+default_model = None
 
 # ---------------------------------
 # Initialize Models and Tools
@@ -35,17 +38,70 @@ class MessagesState(TypedDict):
 gemini_api_key = os.getenv("GEMINI_API_KEY")
 if gemini_api_key:
 
-    gemini_model = ChatGoogleGenerativeAI(
+    gemini_model_flash = ChatGoogleGenerativeAI(
         model="models/gemini-2.5-flash", 
         streaming=True, 
         google_api_key=gemini_api_key
     )
     
-    gemini_with_tools = gemini_model.bind_tools(tools)
-
-    logger.info("Gemini model loaded.")
+    gemini_with_tools_flash = gemini_model_flash.bind_tools(tools)
+    available_models["fast"] = gemini_with_tools_flash
+    if not default_model:
+        default_model = "fast"
+    logger.info("Gemini (2.5-flash) model loaded.")
 else:
-    logger.warning("GEMINI_API_KEY not set. Gemini model will not be available.")
+    logger.warning("GEMINI_API_KEY not set. Gemini (2.5-flash) model will not be available.")
+
+if gemini_api_key:
+    
+    gemini_model_flash_lite = ChatGoogleGenerativeAI(
+        model="models/gemini-2.5-flash-lite", 
+        streaming=True, 
+        google_api_key=gemini_api_key
+    )
+    
+    gemini_with_tools_flash_lite = gemini_model_flash_lite.bind_tools(tools)
+    available_models["unlimited"] = gemini_with_tools_flash_lite
+    if not default_model:
+        default_model = "unlimited"
+    logger.info("Gemini (2.5-flash-lite) model loaded.")
+else:
+    logger.warning("GEMINI_API_KEY not set. Gemini (2.5-flash-lite) model will not be available.")
+
+
+if gemini_api_key:
+    
+    gemini_model_pro = ChatGoogleGenerativeAI(
+        model="models/gemini-2.5-pro", 
+        streaming=True, 
+        google_api_key=gemini_api_key,
+        temperature = 1
+    )
+    
+    gemini_with_tools_pro = gemini_model_pro.bind_tools(tools)
+    available_models["pro"] = gemini_with_tools_pro
+    if not default_model:
+        default_model = "pro"
+    logger.info("Gemini (2.5-pro) model loaded.")
+else:
+    logger.warning("GEMINI_API_KEY not set. Gemini (2.5-pro) model will not be available.")
+
+if gemini_api_key:
+    
+    gemini_model_v2_flash = ChatGoogleGenerativeAI(
+        model="models/gemini-2.0-flash", 
+        streaming=True, 
+        google_api_key=gemini_api_key
+    )
+    
+    gemini_with_tools_v2_flash = gemini_model_v2_flash.bind_tools(tools)
+    available_models["flash"] = gemini_with_tools_v2_flash
+    if not default_model:
+        default_model = "flash"
+    logger.info("Gemini (2.0-flash) model loaded.")
+else:
+    logger.warning("GEMINI_API_KEY not set. Gemini (2.0-flash) model will not be available.")
+
 
 
 
@@ -55,17 +111,28 @@ else:
 # Define the graph nodes
 # ---------------------------------
 
-def agent_node(state: MessagesState):
+def agent_node(state: MessagesState, config: RunnableConfig):
     """
     The primary node that calls the LLM.
     It checks the config for a specified model, otherwise uses the default.
     It takes the current state (list of messages) and invokes the model.
     The model can respond with a message or a tool call.
     """
+    # Get model_name from config, fallback to default
+    model_name = config.get("configurable", {}).get("model_name", default_model)
+    
+    # Get the model from our available models, or use the default if invalid
+    model = available_models.get(model_name)
+    if not model:
+        logger.warning(f"Invalid model_name: {model_name}. Falling back to default: {default_model}")
+        model = available_models[default_model]
+    
+    logger.info(f"Using model: {model_name}")
+
     messages = state['messages']
     
     # Invoke the model with the current state
-    response = gemini_with_tools.invoke(messages)
+    response = model.invoke(messages)
     
     # The response store in state
     return {"messages": [response]}
