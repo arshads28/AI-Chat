@@ -103,6 +103,63 @@ async def get_chat_history(thread_id: str):
         logger.error(f"Error fetching chat history: {type(e).__name__}")
         return {"messages": [], "thread_id": thread_id}
 
+@app.get("/all-chats")
+async def get_all_chats():
+    """Get all chat threads from database."""
+    try:
+        # Access the SQLite database directly
+        conn = langgraph_app.checkpointer.conn
+        
+        # Debug: Check what tables exist
+        cursor = await conn.execute("SELECT name FROM sqlite_master WHERE type='table';")
+        tables = await cursor.fetchall()
+        logger.info(f"Available tables: {tables}")
+        
+        # Get all thread IDs ordered by timestamp
+        cursor = await conn.execute(
+            "SELECT thread_id, MAX(checkpoint) as latest_checkpoint FROM checkpoints GROUP BY thread_id ORDER BY latest_checkpoint DESC"
+        )
+        rows = await cursor.fetchall()
+        logger.info(f"table is {rows}")
+        logger.info(f"Found {len(rows)} thread_ids: {rows}")
+        
+        chats = []
+        for row in rows:
+            thread_id = row[0]
+            # logger.info(f"Processing thread_id: {thread_id}")
+            
+            # Get first user message for title
+            config = {"configurable": {"thread_id": thread_id}}
+            state = await langgraph_app.aget_state(config)
+            
+            title = "New Chat"
+            timestamp = 0
+            if state and state.values and 'messages' in state.values:
+                for msg in state.values['messages']:
+                    if hasattr(msg, 'content') and msg.__class__.__name__ == 'HumanMessage':
+                        title = msg.content[:30] + ('...' if len(msg.content) > 30 else '')
+                        break
+                # Extract timestamp from checkpoint data
+                try:
+                    import json
+                    checkpoint_data = json.loads(row[1]) if isinstance(row[1], str) else row[1]
+                    timestamp = int(checkpoint_data.get('ts', 0))
+                except:
+                    import time
+                    timestamp = int(time.time() * 1000)
+            
+            chats.append({
+                'thread_id': thread_id,
+                'title': title,
+                'timestamp': timestamp
+            })
+        
+        logger.info(f"Returning {len(chats)} chats")
+        return {"chats": chats}
+    except Exception as e:
+        logger.error(f"Error fetching all chats: {type(e).__name__}: {str(e)}")
+        return {"chats": []}
+
  
 
 async def llm_response(thread_id: str, request: ChatRequest):
