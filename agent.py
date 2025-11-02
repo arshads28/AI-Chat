@@ -153,7 +153,11 @@ def agent_node(state: MessagesState, config: RunnableConfig):
 # The ToolNode is a prebuilt node that executes tools
 # It takes the list of tools, finds the one(s) the agent called,
 # executes them, and returns the output
-tool_node = ToolNode(tools)
+try:
+    tool_node = ToolNode(tools)
+except Exception as e:
+    logger.error(f"Error creating ToolNode: {type(e).__name__}")
+    tool_node = None
 
 
 from langchain_core.messages import AIMessage
