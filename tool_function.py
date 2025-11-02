@@ -1,5 +1,6 @@
 import datetime
-import pytz # A library for time zones
+import pytz
+import re
 
 def get_current_time(timezone: str = 'UTC') -> str:
     """
@@ -13,8 +14,16 @@ def get_current_time(timezone: str = 'UTC') -> str:
         A formatted string with the current date and time.
     """
     try:
+        # Sanitize timezone input to prevent injection
+        if not re.match(r'^[A-Za-z_/]+$', timezone):
+            return "Error: Invalid timezone format. Please use a valid IANA timezone string."
+        
         tz = pytz.timezone(timezone)
         current_time = datetime.datetime.now(tz)
-        return f"The current date and time in {timezone} is: {current_time.strftime('%Y-%m-%d %H:%M:%S %Z')}"
+        # Use safe string formatting
+        safe_timezone = re.sub(r'[^A-Za-z_/]', '', timezone)
+        return f"The current date and time in {safe_timezone} is: {current_time.strftime('%Y-%m-%d %H:%M:%S %Z')}"
     except pytz.exceptions.UnknownTimeZoneError:
-        return f"Error: Unknown timezone '{timezone}'. Please use a valid IANA timezone string (e.g., 'America/Los_Angeles')."
+        return "Error: Unknown timezone. Please use a valid IANA timezone string (e.g., 'America/Los_Angeles')."
+    except Exception:
+        return "Error: Unable to get current time."

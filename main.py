@@ -77,45 +77,43 @@ async def get_root(request: Request):
 async def get_csrf_token():
     """Generate and return a CSRF token."""
     token = secrets.token_urlsafe(32)
-    logger.info(f"Generate and return a CSRF token")
+    logger.info("CSRF token generated")
     csrf_tokens.add(token)
     return {"csrf_token": token}
 
  
 
 async def llm_response(thread_id: str, request: ChatRequest):
-
-    if not thread_id or thread_id == 1234:
-        thread_id = str(uuid.uuid4())  # Correctly generate a new UUID string
-        logger.info(f"Generated new thread_id: {thread_id}")
-
-    logger.info(f" user message is : {request.input}")
-
-    # Configuration for the graph:
-    # 'thread_id' is the key for persistence
-    # 'model_name' is passed to our agent_node
-    config = {
-        "configurable": {
-            "thread_id": thread_id,
-            "model_name": request.model_name,
-            "recursion_limit": 30
-        }
-    }
-
-    
-    # Use 'ainvoke' since this is an async function
-    # resp = await langgraph_app.ainvoke( {'topic': request.input}, config=config)
-    resp = await langgraph_app.ainvoke(
-        {"messages": [HumanMessage(content=request.input)]}, 
-        config=config
-    )
-
-    logger.info(f"Response from FULL AI workflow: {resp}")
-
     try:
+        if not thread_id or thread_id == 1234:
+            thread_id = str(uuid.uuid4())
+            logger.info(f"Generated new thread_id: {thread_id}")
+
+        logger.info(f"User message received (length: {len(request.input)})")
+
+        # Configuration for the graph:
+        # 'thread_id' is the key for persistence
+        # 'model_name' is passed to our agent_node
+        config = {
+            "configurable": {
+                "thread_id": thread_id,
+                "model_name": request.model_name,
+                "recursion_limit": 30
+            }
+        }
+
+        
+        # Use 'ainvoke' since this is an async function
+        # resp = await langgraph_app.ainvoke( {'topic': request.input}, config=config)
+        resp = await langgraph_app.ainvoke(
+            {"messages": [HumanMessage(content=request.input)]}, 
+            config=config
+        )
+
+        logger.info("AI workflow completed successfully")
 
         last_content = resp['messages'][-1].content
-        logger.info(f"ai response last_content is {last_content} ")
+        logger.info(f"AI response generated (length: {len(str(last_content))})")
         
         res = "" 
 
@@ -138,20 +136,18 @@ async def llm_response(thread_id: str, request: ChatRequest):
         
         else:
             # Fallback for unexpected content type (e.g., just in case)
-            logger.warn(f"Unexpected content type from model: {type(last_content)}")
+            logger.warning(f"Unexpected content type from model: {type(last_content).__name__}")
             res = str(last_content)
 
-    except (KeyError, IndexError, AttributeError) as e:
-        logger.error(f"Error extracting content from response: {e} - Resp: {resp}")
-        res = "Error: Could not parse LLM response."
-
-
-    logger.info(f"Response from AI workflow: {res}")
-    
-    return {
-        "final_message": res,
-        "thread_id": thread_id
-    }
+        logger.info(f"Response generated (length: {len(res)})")
+        
+        return {
+            "final_message": res,
+            "thread_id": thread_id
+        }
+    except Exception as e:
+        logger.error(f"Critical error in llm_response: {type(e).__name__}")
+        raise HTTPException(status_code=500, detail="Internal server error")
     
 
 
@@ -161,23 +157,28 @@ async def chat_invoke(request: Request):
     """
     POST endpoint to get a single, complete chat response.
     """
-    # Debug: Log raw request body
-    body = await request.body()
-    logger.info(f"Raw request body: {body.decode()}")
+    # Log request without exposing sensitive data
+    logger.info("Chat request received")
     
     try:
         data = await request.json()
+        
+        # Validate input length
+        if len(data.get('input', '')) > 10000:
+            raise HTTPException(status_code=400, detail="Input too long")
+        
         chat_request = ChatRequest(**data)
         
-        logger.info(f"CSFR req{chat_request.csrf_token} == set{csrf_tokens} ")
         # Validate CSRF token
         if chat_request.csrf_token not in csrf_tokens:
             raise HTTPException(status_code=403, detail="Invalid CSRF token")
         csrf_tokens.discard(chat_request.csrf_token)
         
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Validation error: {e}")
-        raise HTTPException(status_code=422, detail=str(e))
+        logger.error(f"Validation error: {type(e).__name__}")
+        raise HTTPException(status_code=422, detail="Invalid request format")
     
     # Get IP from the raw Request object
     ip = request.client.host
@@ -185,7 +186,7 @@ async def chat_invoke(request: Request):
     
     # Get data from the Pydantic body model (now named 'chat_request')
     client_details = chat_request.client_data
-    logger.info(f"user details is : {client_details}")
+    logger.info(f"Client details received: {len(str(client_details)) if client_details else 0} chars")
 
     thread_id = chat_request.thread_id
     logger.info(f"Received request for thread: {thread_id}")

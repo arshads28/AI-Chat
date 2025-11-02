@@ -120,10 +120,14 @@ function createNewChat() {
 // Load a chat
 function loadChat(chatId) {
     const chat = chats[chatId];
-    if (!chat) return;
+    if (!chat) {
+        logger.error('Chat not found:', chatId);
+        return;
+    }
     
-    currentThreadId = chat.threadId;
-    chatTitle.textContent = chat.title;
+    try {
+        currentThreadId = chat.threadId;
+        chatTitle.textContent = chat.title;
     
     const container = chatWindow.querySelector('.max-w-3xl');
     container.innerHTML = `
@@ -141,12 +145,15 @@ function loadChat(chatId) {
         </div>
     `;
     
-    chat.messages.forEach(msg => {
-        addMessage(msg.sender, msg.content, false);
-    });
-    
-    updateChatHistory();
-    closeMobileSidebar();
+        chat.messages.forEach(msg => {
+            addMessage(msg.sender, msg.content, false);
+        });
+        
+        updateChatHistory();
+        closeMobileSidebar();
+    } catch (error) {
+        console.error('Error loading chat:', error);
+    }
 }
 
 // Update chat history sidebar
@@ -190,16 +197,18 @@ function updateChatHistory() {
 
 // Delete chat
 function deleteChat(chatId) {
-    delete chats[chatId];
-    if (getCurrentChatId() === chatId) {
-        const remainingChats = Object.keys(chats);
-        if (remainingChats.length > 0) {
-            loadChat(remainingChats[0]);
-        } else {
-            createNewChat();
+    if (chats[chatId]) {
+        delete chats[chatId];
+        if (getCurrentChatId() === chatId) {
+            const remainingChats = Object.keys(chats);
+            if (remainingChats.length > 0) {
+                loadChat(remainingChats[0]);
+            } else {
+                createNewChat();
+            }
         }
+        updateChatHistory();
     }
-    updateChatHistory();
 }
 
 // Get current chat ID
@@ -227,9 +236,15 @@ newChatBtn.addEventListener('click', () => {
 });
 
 function addMessage(sender, message, isStreaming = false) {
-    const container = chatWindow.querySelector('.max-w-3xl');
-    const messageDiv = document.createElement('div');
-    messageDiv.classList.add('message-animation', 'flex', 'gap-4', 'mb-6');
+    try {
+        const container = chatWindow.querySelector('.max-w-3xl');
+        if (!container) {
+            console.error('Chat container not found');
+            return null;
+        }
+        
+        const messageDiv = document.createElement('div');
+        messageDiv.classList.add('message-animation', 'flex', 'gap-4', 'mb-6');
     
     const avatar = document.createElement('div');
     avatar.classList.add('avatar');
@@ -261,7 +276,8 @@ function addMessage(sender, message, isStreaming = false) {
                     <span class="dot"></span>
                 </span>`;
         } else {
-            messageContent.innerHTML = marked.parse(message);
+            const parsedMarkdown = marked.parse(message);
+            messageContent.innerHTML = window.DOMPurify ? DOMPurify.sanitize(parsedMarkdown) : parsedMarkdown;
         }
     }
     
@@ -270,17 +286,18 @@ function addMessage(sender, message, isStreaming = false) {
     messageDiv.appendChild(content);
     container.appendChild(messageDiv);
     
-    chatWindow.scrollTop = chatWindow.scrollHeight;
-    return messageContent;
+        chatWindow.scrollTop = chatWindow.scrollHeight;
+        return messageContent;
+    } catch (error) {
+        console.error('Error adding message:', error);
+        return null;
+    }
 }
 
 async function getCSRFToken() {
-
     const response = await fetch('/csrf-token');
     const data = await response.json();
-        csrfToken = data.csrf_token;
-    
-    return csrfToken;
+    return data.csrf_token;
 }
 
 async function handleSubmit(e) {
@@ -288,7 +305,13 @@ async function handleSubmit(e) {
     
     const message = messageInput.value.trim();
     const modelName = modelSelect.value;
+    
+    // Input validation
     if (!message) return;
+    if (message.length > 10000) {
+        alert('Message too long. Please keep it under 10,000 characters.');
+        return;
+    }
 
     let chatId = getCurrentChatId();
     if (!chatId || !chats[chatId]) {
@@ -350,7 +373,7 @@ async function handleSubmit(e) {
         } else if (data.error) {
             fullResponse = `**Error:** ${data.error}`;
         } else {
-            fullResponse = data.response || "Sorry, I received an empty response.";
+            fullResponse = "Sorry, I received an empty response.";
         }
 
         if (data.thread_id) {
@@ -363,10 +386,16 @@ async function handleSubmit(e) {
         
     } catch (err) {
         console.error('Fetch error:', err);
-        csrfToken = null; 
-        fullResponse = `**Sorry, an error occurred:** ${err.message}`;
+        if (err.message.includes('403')) {
+            fullResponse = '**Error:** Session expired. Please refresh the page.';
+        } else if (err.message.includes('422')) {
+            fullResponse = '**Error:** Invalid request format.';
+        } else {
+            fullResponse = '**Sorry, an error occurred.** Please try again.';
+        }
     } finally {
-        assistantMessageDiv.innerHTML = marked.parse(fullResponse);
+        const parsedResponse = marked.parse(fullResponse);
+        assistantMessageDiv.innerHTML = window.DOMPurify ? DOMPurify.sanitize(parsedResponse) : parsedResponse;
         chatWindow.scrollTop = chatWindow.scrollHeight;
         
         // sendButton.disabled = false;

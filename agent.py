@@ -120,28 +120,35 @@ def agent_node(state: MessagesState, config: RunnableConfig):
     It takes the current state (list of messages) and invokes the model.
     The model can respond with a message or a tool call.
     """
-    # Get model_name from config, fallback to default
-    model_name = config.get("configurable", {}).get("model_name", default_model)
-    
-    # Get the model from our available models, or use the default if invalid
-    model = available_models.get(model_name)
-    if not model:
-        logger.warning(f"Invalid model_name: {model_name}. Falling back to default: {default_model}")
-        model = available_models[default_model]
-    
-    logger.info(f"Using model: {model_name}")
+    try:
+        # Get model_name from config, fallback to default
+        model_name = config.get("configurable", {}).get("model_name", default_model)
+        
+        # Get the model from our available models, or use the default if invalid
+        model = available_models.get(model_name)
+        if not model:
+            logger.warning(f"Invalid model_name: {model_name}. Falling back to default: {default_model}")
+            model = available_models[default_model]
+        
+        logger.info(f"Using model: {model_name}")
 
-    messages = state['messages']
-    prompt = [
-        SystemMessage(content="You are a Ai agent and your name is CORE ,  if question is related to weather or date/time use tool calling, else answer it according to user as experience person. Give the response in proper formatting"),
-        HumanMessage(content=f"""  {messages}   """)
-    ]
-    
-    # Invoke the model with the current state
-    response = model.invoke(prompt)
-    
-    # The response store in state
-    return {"messages": [response]}
+        messages = state['messages']
+        prompt = [
+            SystemMessage(content="You are an AI agent named CORE. If the question is related to weather or date/time, use tool calling. Otherwise, answer as an experienced person with proper formatting."),
+            HumanMessage(content=str(messages))
+        ]
+        
+        # Invoke the model with the current state
+        response = model.invoke(prompt)
+        
+        # The response store in state
+        return {"messages": [response]}
+    except Exception as e:
+        logger.error(f"Error in agent_node: {type(e).__name__}")
+        # Return error message instead of crashing
+        from langchain_core.messages import AIMessage
+        error_response = AIMessage(content="I apologize, but I encountered an error processing your request.")
+        return {"messages": [error_response]}
 
 # The ToolNode is a prebuilt node that executes tools
 # It takes the list of tools, finds the one(s) the agent called,
@@ -153,14 +160,18 @@ from langchain_core.messages import AIMessage
 
 def should_continue(state: MessagesState) -> str:
     """Decides the next step: call tools or end."""
-    last_message = state['messages'][-1]
-    
-    # Check if the last message from the AI has any tool calls
-    if isinstance(last_message, AIMessage) and last_message.tool_calls:
-        # If yes, route to the tool_node
-        return "call_tools"
-    else:
-        # If no, we're done
+    try:
+        last_message = state['messages'][-1]
+        
+        # Check if the last message from the AI has any tool calls
+        if isinstance(last_message, AIMessage) and last_message.tool_calls:
+            # If yes, route to the tool_node
+            return "call_tools"
+        else:
+            # If no, we're done
+            return "end"
+    except (IndexError, KeyError) as e:
+        logger.error(f"Error in should_continue: {type(e).__name__}")
         return "end"
 
 
