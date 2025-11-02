@@ -138,6 +138,18 @@ async function loadChat(chatId) {
         currentThreadId = chat.threadId;
         if (chatTitle) chatTitle.textContent = chat.title;
         
+        // Update URL with thread_id
+        if (chat.threadId) {
+            const url = new URL(window.location);
+            url.searchParams.set('thread_id', chat.threadId);
+            window.history.pushState({}, '', url);
+        } else {
+            // Remove thread_id from URL for new chats
+            const url = new URL(window.location);
+            url.searchParams.delete('thread_id');
+            window.history.pushState({}, '', url);
+        }
+        
         // Load from backend if thread exists but no local messages
         if (chat.threadId && chat.messages.length === 0) {
             await loadChatHistoryFromBackend(chat.threadId, chatId);
@@ -366,12 +378,6 @@ async function loadAllChatsFromBackend() {
                 });
                 
                 updateChatHistory();
-                
-                // Load the first chat if no current chat
-                if (!currentThreadId && Object.keys(chats).length > 0) {
-                    const firstChatId = Object.keys(chats)[0];
-                    loadChat(firstChatId);
-                }
             }
         }
     } catch (error) {
@@ -567,13 +573,17 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e)
 });
 
 // Load all chats from backend on startup
+const urlParams = new URLSearchParams(window.location.search);
+const urlThreadId = urlParams.get('thread_id');
+
 loadAllChatsFromBackend().then(() => {
     // Load existing chat from URL or create new one
-    if (!loadChatFromURL()) {
-        // Only create new chat if no chats exist
-        if (Object.keys(chats).length === 0) {
-            createNewChat();
-        }
+    if (urlThreadId) {
+        // If URL has thread_id, load that specific chat
+        loadChatFromURL();
+    } else {
+        // Otherwise create new blank chat on startup
+        createNewChat();
     }
     if (messageInput) messageInput.focus();
 });
