@@ -115,17 +115,18 @@ async def get_all_chats():
         tables = await cursor.fetchall()
         logger.info(f"Available tables: {tables}")
         
-        # Try different possible table names
+        # Get all thread IDs ordered by timestamp
         cursor = await conn.execute(
-            "SELECT DISTINCT thread_id FROM checkpoints ORDER BY thread_id DESC LIMIT 10"
+            "SELECT thread_id, MAX(checkpoint) as latest_checkpoint FROM checkpoints GROUP BY thread_id ORDER BY latest_checkpoint DESC"
         )
         rows = await cursor.fetchall()
+        logger.info(f"table is {rows}")
         logger.info(f"Found {len(rows)} thread_ids: {rows}")
         
         chats = []
         for row in rows:
             thread_id = row[0]
-            logger.info(f"Processing thread_id: {thread_id}")
+            # logger.info(f"Processing thread_id: {thread_id}")
             
             # Get first user message for title
             config = {"configurable": {"thread_id": thread_id}}
@@ -138,9 +139,14 @@ async def get_all_chats():
                     if hasattr(msg, 'content') and msg.__class__.__name__ == 'HumanMessage':
                         title = msg.content[:30] + ('...' if len(msg.content) > 30 else '')
                         break
-                # Use current timestamp as fallback
-                import time
-                timestamp = int(time.time() * 1000)
+                # Extract timestamp from checkpoint data
+                try:
+                    import json
+                    checkpoint_data = json.loads(row[1]) if isinstance(row[1], str) else row[1]
+                    timestamp = int(checkpoint_data.get('ts', 0))
+                except:
+                    import time
+                    timestamp = int(time.time() * 1000)
             
             chats.append({
                 'thread_id': thread_id,
