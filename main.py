@@ -135,7 +135,7 @@ async def get_all_chats():
         
         # Get all thread IDs ordered by timestamp
         cursor = await conn.execute(
-            "SELECT thread_id, MAX(checkpoint) as latest_checkpoint FROM checkpoints GROUP BY thread_id ORDER BY latest_checkpoint DESC"
+            "SELECT thread_id, MAX(checkpoint) as latest_checkpoint FROM checkpoints GROUP BY thread_id ORDER BY latest_checkpoint "
         )
         rows = await cursor.fetchall()
         logger.info(f"table is {rows}")
