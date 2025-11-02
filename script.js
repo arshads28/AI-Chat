@@ -184,7 +184,7 @@ async function loadChat(chatId) {
 // Update chat history sidebar
 function updateChatHistory() {
     chatHistory.innerHTML = '';
-    const sortedChats = Object.values(chats).sort((a, b) => b.timestamp - a.timestamp);
+    const sortedChats = Object.values(chats).sort((a, b) => a.timestamp - b.timestamp);
     
     sortedChats.forEach(chat => {
         const chatItem = document.createElement('div');
