@@ -19,7 +19,8 @@ Thumbs.db
 
 # Ignore logs
 *.log
-
+*.log.1
+*.log.2
 # Ignore virtual environment
 .venv/
 
