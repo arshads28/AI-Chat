@@ -427,3 +427,12 @@ body:not(.light-mode) {
     --chat-item-hover: rgba(38, 38, 38, 0.6);
     --chat-item-active: rgba(64, 64, 64, 0.7);
 }
+/* Hide all scrollbars */
+* {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+*::-webkit-scrollbar {
+    display: none;
+}
