@@ -138,7 +138,9 @@ async def get_all_chats():
                     if hasattr(msg, 'content') and msg.__class__.__name__ == 'HumanMessage':
                         title = msg.content[:30] + ('...' if len(msg.content) > 30 else '')
                         break
-                timestamp = int(state.created_at.timestamp() * 1000) if hasattr(state, 'created_at') and state.created_at else 0
+                # Use current timestamp as fallback
+                import time
+                timestamp = int(time.time() * 1000)
             
             chats.append({
                 'thread_id': thread_id,
