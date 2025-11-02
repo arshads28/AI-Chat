@@ -84,6 +84,7 @@ async def get_csrf_token():
 @app.get("/chat-history/{thread_id}")
 async def get_chat_history(thread_id: str):
     """Get chat history for a specific thread."""
+    logger.info(f"chat-history function")
     try:
         config = {"configurable": {"thread_id": thread_id}}
         state = await langgraph_app.aget_state(config)
@@ -91,8 +92,25 @@ async def get_chat_history(thread_id: str):
         messages = []
         if state and state.values and 'messages' in state.values:
             for msg in state.values['messages']:
+                ai_typ = msg.__class__.__name__
+                
+                if ai_typ =='HumanMessage':
+                    sender = 'user'
+
+                elif ai_typ == 'AIMessage':
+
+                    if hasattr(msg, 'tool_calls') and msg.tool_calls:
+                        continue
+                    sender = 'assistant'
+
+                elif ai_typ == 'ToolMessage':
+                    continue
+                else:
+                    # Skip other types like SystemMessage
+                    continue
+                
                 if hasattr(msg, 'content'):
-                    sender = 'user' if msg.__class__.__name__ == 'HumanMessage' else 'assistant'
+                    
                     messages.append({
                         'sender': sender,
                         'content': msg.content
@@ -117,7 +135,7 @@ async def get_all_chats():
         
         # Get all thread IDs ordered by timestamp
         cursor = await conn.execute(
-            "SELECT thread_id, MAX(checkpoint) as latest_checkpoint FROM checkpoints GROUP BY thread_id ORDER BY latest_checkpoint DESC"
+            "SELECT thread_id, MAX(checkpoint) as latest_checkpoint FROM checkpoints GROUP BY thread_id ORDER BY latest_checkpoint "
         )
         rows = await cursor.fetchall()
         logger.info(f"table is {rows}")
