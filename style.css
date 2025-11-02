@@ -199,11 +199,16 @@ body.light-mode {
 }
 
 @media (max-width: 768px) {
+    body {
+        padding-top: env(safe-area-inset-top);
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+    
     .sidebar {
         position: fixed;
         left: 0;
-        top: 0;
-        height: 100vh;
+        top: env(safe-area-inset-top, 0);
+        height: calc(100vh - env(safe-area-inset-top, 0) - env(safe-area-inset-bottom, 0));
         z-index: 50;
         background-color: inherit;
         transform: translateX(0); /* Default transform (open) */
