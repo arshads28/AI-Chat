@@ -296,11 +296,12 @@ async def chat_invoke(request: Request):
 
 if __name__ == "__main__":
     # This is the entry point for running the server directly
+    import os
+    port = int(os.environ.get("PORT", 8000))
     uvicorn.run(
         "main:app", 
-        host="127.0.0.1", 
-        port=8000, 
-        reload=True, 
-        log_config="logging.yaml"
+        host="0.0.0.0", 
+        port=port, 
+        reload=False
     )
 
