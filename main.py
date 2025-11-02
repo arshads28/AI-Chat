@@ -81,6 +81,28 @@ async def get_csrf_token():
     csrf_tokens.add(token)
     return {"csrf_token": token}
 
+@app.get("/chat-history/{thread_id}")
+async def get_chat_history(thread_id: str):
+    """Get chat history for a specific thread."""
+    try:
+        config = {"configurable": {"thread_id": thread_id}}
+        state = await langgraph_app.aget_state(config)
+        
+        messages = []
+        if state and state.values and 'messages' in state.values:
+            for msg in state.values['messages']:
+                if hasattr(msg, 'content'):
+                    sender = 'user' if msg.__class__.__name__ == 'HumanMessage' else 'assistant'
+                    messages.append({
+                        'sender': sender,
+                        'content': msg.content
+                    })
+        
+        return {"messages": messages, "thread_id": thread_id}
+    except Exception as e:
+        logger.error(f"Error fetching chat history: {type(e).__name__}")
+        return {"messages": [], "thread_id": thread_id}
+
  
 
 async def llm_response(thread_id: str, request: ChatRequest):

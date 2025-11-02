@@ -118,16 +118,22 @@ function createNewChat() {
 }
 
 // Load a chat
-function loadChat(chatId) {
+async function loadChat(chatId) {
     const chat = chats[chatId];
     if (!chat) {
-        logger.error('Chat not found:', chatId);
+        console.error('Chat not found:', chatId);
         return;
     }
     
     try {
         currentThreadId = chat.threadId;
-        chatTitle.textContent = chat.title;
+        if (chatTitle) chatTitle.textContent = chat.title;
+        
+        // Load from backend if thread exists but no local messages
+        if (chat.threadId && chat.messages.length === 0) {
+            await loadChatHistoryFromBackend(chat.threadId, chatId);
+            return; // loadChatHistoryFromBackend will call loadChat again
+        }
     
     const container = chatWindow.querySelector('.max-w-3xl');
     container.innerHTML = `
@@ -295,6 +301,36 @@ async function getCSRFToken() {
     return data.csrf_token;
 }
 
+async function loadChatHistoryFromBackend(threadId, chatId) {
+    try {
+        const response = await fetch(`/chat-history/${threadId}`);
+        if (response.ok) {
+            const data = await response.json();
+            if (data.messages && data.messages.length > 0) {
+                const chat = chats[chatId];
+                if (chat) {
+                    // Clear existing messages except the user message we just added
+                    const lastUserMessage = chat.messages[chat.messages.length - 1];
+                    chat.messages = data.messages;
+                    
+                    // Re-add the current user message if it's not in history
+                    if (lastUserMessage && lastUserMessage.sender === 'user') {
+                        const lastHistoryMessage = data.messages[data.messages.length - 1];
+                        if (!lastHistoryMessage || lastHistoryMessage.content !== lastUserMessage.content) {
+                            chat.messages.push(lastUserMessage);
+                        }
+                    }
+                    
+                    // Reload the chat display
+                    loadChat(chatId);
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Error loading chat history:', error);
+    }
+}
+
 async function handleSubmit(e) {
     e.preventDefault();
     
@@ -374,6 +410,11 @@ async function handleSubmit(e) {
         if (data.thread_id) {
             currentThreadId = data.thread_id;
             chat.threadId = data.thread_id;
+            
+            // Load chat history if this is a new thread
+            if (chat.messages.length === 1) {
+                loadChatHistoryFromBackend(data.thread_id, chatId);
+            }
         }
         
         chat.messages.push({ sender: 'assistant', content: fullResponse });
@@ -425,10 +466,34 @@ window.addEventListener('resize', () => {
     }
 });
 
+// Function to create chat from URL thread_id
+function loadChatFromURL() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const threadId = urlParams.get('thread_id');
+    
+    if (threadId) {
+        const chatId = 'chat_' + Date.now();
+        chats[chatId] = {
+            id: chatId,
+            threadId: threadId,
+            title: 'Existing Chat',
+            messages: [],
+            timestamp: Date.now()
+        };
+        loadChat(chatId);
+        updateChatHistory();
+        return true;
+    }
+    return false;
+}
+
 // --- SET DEFAULT STATE ---
 if (window.innerWidth <= 768) {
     sidebar.classList.add('is-closed'); // Close by default on mobile
 }
 
-createNewChat();
-messageInput.focus();
+// Load existing chat or create new one
+if (!loadChatFromURL()) {
+    createNewChat();
+}
+if (messageInput) messageInput.focus();
