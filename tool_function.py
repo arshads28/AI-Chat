@@ -1,5 +1,5 @@
 import datetime
-import pytz
+from zoneinfo import ZoneInfo
 import re
 
 def get_current_time(timezone: str = 'UTC') -> str:
@@ -18,12 +18,10 @@ def get_current_time(timezone: str = 'UTC') -> str:
         if not re.match(r'^[A-Za-z_/]+$', timezone):
             return "Error: Invalid timezone format. Please use a valid IANA timezone string."
         
-        tz = pytz.timezone(timezone)
+        tz = ZoneInfo(timezone)
         current_time = datetime.datetime.now(tz)
         # Use safe string formatting
         safe_timezone = re.sub(r'[^A-Za-z_/]', '', timezone)
         return f"The current date and time in {safe_timezone} is: {current_time.strftime('%Y-%m-%d %H:%M:%S %Z')}"
-    except pytz.exceptions.UnknownTimeZoneError:
-        return "Error: Unknown timezone. Please use a valid IANA timezone string (e.g., 'America/Los_Angeles')."
     except Exception:
-        return "Error: Unable to get current time."
+        return "Error: Unknown timezone or unable to get current time. Please use a valid IANA timezone string (e.g., 'America/Los_Angeles')."
