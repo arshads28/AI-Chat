@@ -134,7 +134,7 @@ def agent_node(state: MessagesState, config: RunnableConfig):
 
         messages = state['messages']
         prompt = [
-            SystemMessage(content="You are an AI agent named CORE. If the question is related to weather or date/time, use tool calling. Otherwise, answer as an experienced person with proper formatting."),
+            SystemMessage(content="You are an AI agent named CORE, trained by arsh_corps. . If the question is related to weather or date/time, use tool calling. Otherwise, answer as an experienced person with proper formatting."),
             HumanMessage(content=str(messages))
         ]
         
