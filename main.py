@@ -103,6 +103,55 @@ async def get_chat_history(thread_id: str):
         logger.error(f"Error fetching chat history: {type(e).__name__}")
         return {"messages": [], "thread_id": thread_id}
 
+@app.get("/all-chats")
+async def get_all_chats():
+    """Get all chat threads from database."""
+    try:
+        # Access the SQLite database directly
+        conn = langgraph_app.checkpointer.conn
+        
+        # Debug: Check what tables exist
+        cursor = await conn.execute("SELECT name FROM sqlite_master WHERE type='table';")
+        tables = await cursor.fetchall()
+        logger.info(f"Available tables: {tables}")
+        
+        # Try different possible table names
+        cursor = await conn.execute(
+            "SELECT DISTINCT thread_id FROM checkpoints ORDER BY thread_id DESC LIMIT 10"
+        )
+        rows = await cursor.fetchall()
+        logger.info(f"Found {len(rows)} thread_ids: {rows}")
+        
+        chats = []
+        for row in rows:
+            thread_id = row[0]
+            logger.info(f"Processing thread_id: {thread_id}")
+            
+            # Get first user message for title
+            config = {"configurable": {"thread_id": thread_id}}
+            state = await langgraph_app.aget_state(config)
+            
+            title = "New Chat"
+            timestamp = 0
+            if state and state.values and 'messages' in state.values:
+                for msg in state.values['messages']:
+                    if hasattr(msg, 'content') and msg.__class__.__name__ == 'HumanMessage':
+                        title = msg.content[:30] + ('...' if len(msg.content) > 30 else '')
+                        break
+                timestamp = int(state.created_at.timestamp() * 1000) if hasattr(state, 'created_at') and state.created_at else 0
+            
+            chats.append({
+                'thread_id': thread_id,
+                'title': title,
+                'timestamp': timestamp
+            })
+        
+        logger.info(f"Returning {len(chats)} chats")
+        return {"chats": chats}
+    except Exception as e:
+        logger.error(f"Error fetching all chats: {type(e).__name__}: {str(e)}")
+        return {"chats": []}
+
  
 
 async def llm_response(thread_id: str, request: ChatRequest):

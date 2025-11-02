@@ -183,9 +183,14 @@ function updateChatHistory() {
             </button>
         `;
         
-        chatItem.addEventListener('click', (e) => {
+        chatItem.addEventListener('click', async (e) => {
             if (!e.target.closest('.delete-chat')) {
-                loadChat(chat.id);
+                // Load chat history from backend when clicking on chat item
+                if (chat.threadId && chat.messages.length === 0) {
+                    await loadChatHistoryFromBackend(chat.threadId, chat.id);
+                } else {
+                    loadChat(chat.id);
+                }
             }
         });
         
@@ -328,6 +333,40 @@ async function loadChatHistoryFromBackend(threadId, chatId) {
         }
     } catch (error) {
         console.error('Error loading chat history:', error);
+    }
+}
+
+async function loadAllChatsFromBackend() {
+    try {
+        const response = await fetch('/all-chats');
+        if (response.ok) {
+            const data = await response.json();
+            if (data.chats && data.chats.length > 0) {
+                // Clear existing chats and load from backend
+                chats = {};
+                
+                data.chats.forEach(chatData => {
+                    const chatId = 'chat_' + chatData.thread_id;
+                    chats[chatId] = {
+                        id: chatId,
+                        threadId: chatData.thread_id,
+                        title: chatData.title,
+                        messages: [],
+                        timestamp: chatData.timestamp
+                    };
+                });
+                
+                updateChatHistory();
+                
+                // Load the first chat if no current chat
+                if (!currentThreadId && Object.keys(chats).length > 0) {
+                    const firstChatId = Object.keys(chats)[0];
+                    loadChat(firstChatId);
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Error loading all chats:', error);
     }
 }
 
@@ -492,8 +531,14 @@ if (window.innerWidth <= 768) {
     sidebar.classList.add('is-closed'); // Close by default on mobile
 }
 
-// Load existing chat or create new one
-if (!loadChatFromURL()) {
-    createNewChat();
-}
-if (messageInput) messageInput.focus();
+// Load all chats from backend on startup
+loadAllChatsFromBackend().then(() => {
+    // Load existing chat from URL or create new one
+    if (!loadChatFromURL()) {
+        // Only create new chat if no chats exist
+        if (Object.keys(chats).length === 0) {
+            createNewChat();
+        }
+    }
+    if (messageInput) messageInput.focus();
+});
