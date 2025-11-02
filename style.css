@@ -234,7 +234,7 @@ body.light-mode {
 
 /* Light mode styles - Stunning modern design */
 body.light-mode {
-    background: linear-gradient(135deg, #a8edea 0%, #fed6e3 50%, #d299c2 100%);
+    background: linear-gradient(135deg, #c3dad8 0%, #fef7f7 50%, #faf5ff 100%);
     color: #2d3748;
     position: relative;
 }
@@ -247,18 +247,18 @@ body.light-mode::before {
     right: 0;
     bottom: 0;
     background: 
-        radial-gradient(circle at 20% 80%, rgba(168, 237, 234, 0.4) 0%, transparent 50%),
-        radial-gradient(circle at 80% 20%, rgba(254, 214, 227, 0.4) 0%, transparent 50%),
-        radial-gradient(circle at 40% 40%, rgba(210, 153, 194, 0.3) 0%, transparent 50%);
+        radial-gradient(circle at 20% 80%, rgba(168, 237, 234, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(254, 214, 227, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 40% 40%, rgba(210, 153, 194, 0.08) 0%, transparent 50%);
     pointer-events: none;
     z-index: -1;
 }
 
 body.light-mode .bg-gray-950 { 
-    background: rgba(255, 255, 255, 0.25);
+    background: rgba(233, 249, 255, 0.708);
     backdrop-filter: blur(20px);
-    border-right: 1px solid rgba(255, 255, 255, 0.3);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    border-right: 1px solid rgba(0, 0, 0, 0.1);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.229);
 }
 body.light-mode .bg-gray-900 { background: transparent; }
 body.light-mode .bg-gray-800 { 
