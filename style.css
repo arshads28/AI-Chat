@@ -370,3 +370,60 @@ body.light-mode .assistant-avatar {
     color: white;
     font-weight: 600;
 }
+/* Dark mode overrides - darker and more standard */
+body:not(.light-mode) {
+    background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%) !important;
+}
+
+body:not(.light-mode) .bg-gray-950 { 
+    background: rgba(10, 10, 10, 0.95) !important;
+    border-right: 1px solid rgba(64, 64, 64, 0.3) !important;
+}
+
+body:not(.light-mode) .bg-gray-800 { 
+    background: rgba(26, 26, 26, 0.8) !important;
+    border-bottom: 1px solid rgba(64, 64, 64, 0.3) !important;
+}
+
+body:not(.light-mode) .bg-gray-700 { 
+    background: rgba(38, 38, 38, 0.6) !important;
+    border: 1px solid rgba(82, 82, 82, 0.4) !important;
+}
+
+body:not(.light-mode) .bg-gray-600 { 
+    background: linear-gradient(135deg, #404040 0%, #2a2a2a 100%) !important;
+    box-shadow: 0 4px 12px rgba(64, 64, 64, 0.3) !important;
+}
+
+body:not(.light-mode) .user-avatar {
+    background: linear-gradient(135deg, #525252 0%, #404040 100%) !important;
+    box-shadow: 0 3px 10px rgba(82, 82, 82, 0.3) !important;
+    border: 1px solid rgba(82, 82, 82, 0.2) !important;
+}
+
+body:not(.light-mode) .assistant-avatar {
+    background: linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%) !important;
+    border: 1px solid rgba(64, 64, 64, 0.4) !important;
+}
+
+body:not(.light-mode) .prose pre { 
+    background: rgba(26, 26, 26, 0.8) !important; 
+    border: 1px solid rgba(64, 64, 64, 0.3) !important;
+}
+
+body:not(.light-mode) .prose code { 
+    background: rgba(38, 38, 38, 0.6) !important; 
+    border: 1px solid rgba(82, 82, 82, 0.3) !important;
+}
+
+body:not(.light-mode) #model-select option {
+    background: #1a1a1a !important;
+}
+
+body:not(.light-mode) {
+    --scroll-track: rgba(26, 26, 26, 0.8);
+    --scroll-thumb: rgba(82, 82, 82, 0.8);
+    --scroll-thumb-hover: rgba(115, 115, 115, 0.9);
+    --chat-item-hover: rgba(38, 38, 38, 0.6);
+    --chat-item-active: rgba(64, 64, 64, 0.7);
+}

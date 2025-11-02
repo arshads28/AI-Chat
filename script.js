@@ -25,8 +25,17 @@ let chats = {};
 let csrfToken = null;
 
 // Theme management
-let isDarkMode = true;
+let isDarkMode = !window.matchMedia('(prefers-color-scheme: light)').matches;
 let isMobile = window.innerWidth <= 768;
+
+// Apply initial theme based on browser preference
+if (!isDarkMode) {
+    document.body.classList.add('light-mode');
+    themeText.textContent = 'Dark Mode';
+    themeIcon.innerHTML = `
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+    `;
+}
 
 // Toggle theme
 themeToggle.addEventListener('click', () => {
@@ -491,6 +500,32 @@ function loadChatFromURL() {
 if (window.innerWidth <= 768) {
     sidebar.classList.add('is-closed'); // Close by default on mobile
 }
+
+// Listen for browser theme changes
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+    isDarkMode = e.matches;
+    if (isDarkMode) {
+        document.body.classList.remove('light-mode');
+        themeText.textContent = 'Light Mode';
+        themeIcon.innerHTML = `
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+        `;
+    } else {
+        document.body.classList.add('light-mode');
+        themeText.textContent = 'Dark Mode';
+        themeIcon.innerHTML = `
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        `;
+    }
+});
 
 // Load existing chat or create new one
 if (!loadChatFromURL()) {
