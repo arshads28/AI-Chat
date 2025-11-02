@@ -132,10 +132,8 @@ function loadChat(chatId) {
     const container = chatWindow.querySelector('.max-w-3xl');
     container.innerHTML = `
         <div class="message-animation flex gap-4 mb-6">
-            <div class="avatar assistant-avatar">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-                </svg>
+            <div class="avatar assistant-avatar" style="background-color: #000000;">
+                X
             </div>
             <div class="flex-1 space-y-2">
                 <div class="prose prose-invert text-gray-100">
@@ -254,11 +252,8 @@ function addMessage(sender, message, isStreaming = false) {
         avatar.textContent = 'U';
     } else {
         avatar.classList.add('assistant-avatar');
-        avatar.innerHTML = `
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-            </svg>
-        `;
+        avatar.style.backgroundColor = '#000000';
+        avatar.textContent = 'X';
     }
     
     const content = document.createElement('div');
