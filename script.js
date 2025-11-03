@@ -459,7 +459,6 @@ async function handleSubmit(e) {
     const assistantMessageDiv = addMessage('assistant', '', true);
     let fullResponse = "";
 
-    // --- GATHER CLIENT INFO ---
     const clientData = {
         userAgent: navigator.userAgent,
         language: navigator.language,
@@ -467,6 +466,7 @@ async function handleSubmit(e) {
         screenWidth: window.screen.width,
         screenHeight: window.screen.height
     };
+    
     try {
         const token = await getCSRFToken();
         const response = await fetch('/chat/', { 
@@ -475,7 +475,7 @@ async function handleSubmit(e) {
             body: JSON.stringify({
                 input: message,
                 model_name: modelName,
-                thread_id: currentThreadId ,
+                thread_id: currentThreadId,
                 client_data: clientData,
                 csrf_token: token
             })
@@ -485,28 +485,47 @@ async function handleSubmit(e) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
 
-        const data = await response.json();
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let newThreadId = null;
 
-        if (data.final_message) { 
-            fullResponse = data.final_message;
-        } else if (data.error) {
-            fullResponse = `**Error:** ${data.error}`;
-        } else {
-            fullResponse = "Sorry, I received an empty response.";
-        }
+        while (true) {
+            const {done, value} = await reader.read();
+            if (done) break;
 
-        if (data.thread_id) {
-            currentThreadId = data.thread_id;
-            chat.threadId = data.thread_id;
-            
-            // Load chat history if this is a new thread
-            if (chat.messages.length === 1) {
-                loadChatHistoryFromBackend(data.thread_id, chatId);
+            const chunk = decoder.decode(value);
+            const lines = chunk.split('\n');
+
+            for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                    const data = JSON.parse(line.slice(6));
+                    
+                    if (data.thread_id) {
+                        newThreadId = data.thread_id;
+                        currentThreadId = data.thread_id;
+                        chat.threadId = data.thread_id;
+                    }
+                    
+                    if (data.chunk) {
+                        fullResponse += data.chunk;
+                        const parsedResponse = marked.parse(fullResponse);
+                        assistantMessageDiv.innerHTML = window.DOMPurify ? DOMPurify.sanitize(parsedResponse) : parsedResponse;
+                        chatWindow.scrollTop = chatWindow.scrollHeight;
+                    }
+                    
+                    if (data.done) {
+                        chat.messages.push({ sender: 'assistant', content: fullResponse });
+                        chat.timestamp = Date.now();
+                    }
+                    
+                    if (data.error) {
+                        fullResponse = `**Error:** ${data.error}`;
+                        const parsedResponse = marked.parse(fullResponse);
+                        assistantMessageDiv.innerHTML = window.DOMPurify ? DOMPurify.sanitize(parsedResponse) : parsedResponse;
+                    }
+                }
             }
         }
-        
-        chat.messages.push({ sender: 'assistant', content: fullResponse });
-        chat.timestamp = Date.now();
         
     } catch (err) {
         console.error('Fetch error:', err);
@@ -517,13 +536,10 @@ async function handleSubmit(e) {
         } else {
             fullResponse = '**Sorry, an error occurred.** Please try again.';
         }
-    } finally {
         const parsedResponse = marked.parse(fullResponse);
         assistantMessageDiv.innerHTML = window.DOMPurify ? DOMPurify.sanitize(parsedResponse) : parsedResponse;
+    } finally {
         chatWindow.scrollTop = chatWindow.scrollHeight;
-        
-        // sendButton.disabled = false;
-        // messageInput.disabled = false;
         messageInput.focus();
     }
 }

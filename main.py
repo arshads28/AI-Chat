@@ -158,71 +158,50 @@ async def get_all_chats():
 
  
 
-async def llm_response(thread_id: str, request: ChatRequest):
-    try:
-        if not thread_id or thread_id == 1234:
-            thread_id = str(uuid.uuid4())
-            logger.info(f"Generated new thread_id: {thread_id}")
+async def llm_response_stream(thread_id: str, request: ChatRequest):
+    async def generate():
+        try:
+            if not thread_id or thread_id == 1234:
+                new_thread_id = str(uuid.uuid4())
+                logger.info(f"Generated new thread_id: {new_thread_id}")
+            else:
+                new_thread_id = thread_id
 
-        logger.info(f"User message received (length: {len(request.input)})")
+            logger.info(f"User message received (length: {len(request.input)})")
 
-        # Configuration for the graph:
-        # 'thread_id' is the key for persistence
-        # 'model_name' is passed to our agent_node
-        config = {
-            "configurable": {
-                "thread_id": thread_id,
-                "model_name": request.model_name,
-                "recursion_limit": 30
+            config = {
+                "configurable": {
+                    "thread_id": new_thread_id,
+                    "model_name": request.model_name,
+                    "recursion_limit": 30
+                }
             }
-        }
 
-        
-        # Use 'ainvoke' since this is an async function
-        # resp = await langgraph_app.ainvoke( {'topic': request.input}, config=config)
-        resp = await langgraph_app.ainvoke(
-            {"messages": [HumanMessage(content=request.input)]}, 
-            config=config
-        )
+            # Send thread_id first
+            yield f"data: {json.dumps({'thread_id': new_thread_id})}\n\n"
 
-        logger.info("AI workflow completed successfully")
+            # Stream token by token using astream_events
+            async for event in langgraph_app.astream_events(
+                {"messages": [HumanMessage(content=request.input)]},
+                config=config,
+                version="v2"
+            ):
+                kind = event.get("event")
+                
+                # Stream LLM tokens as they're generated
+                if kind == "on_chat_model_stream":
+                    content = event.get("data", {}).get("chunk", {}).content
+                    if content:
+                        yield f"data: {json.dumps({'chunk': content})}\n\n"
 
-        last_content = resp['messages'][-1].content
-        logger.info(f"AI response generated (length: {len(str(last_content))})")
-        
-        res = "" 
-
-        # NEW LOGIC to handle multi-part content
-        if isinstance(last_content, list):
-        
-            final_text_parts = []
-            for part in last_content:
-                if isinstance(part, dict) and 'text' in part:
-                    final_text_parts.append(part['text'])
-                elif isinstance(part, str):
-                    final_text_parts.append(part)
+            yield f"data: {json.dumps({'done': True})}\n\n"
+            logger.info("AI workflow completed successfully")
             
-            # Join all parts into a single string, separated by a newline
-            res = "\n".join(final_text_parts)
-        
-        elif isinstance(last_content, str):
-            # Content is already a simple string
-            res = last_content
-        
-        else:
-            # Fallback for unexpected content type (e.g., just in case)
-            logger.warning(f"Unexpected content type from model: {type(last_content).__name__}")
-            res = str(last_content)
-
-        logger.info(f"Response generated (length: {len(res)})")
-        
-        return {
-            "final_message": res,
-            "thread_id": thread_id
-        }
-    except Exception as e:
-        logger.error(f"Critical error in llm_response: {type(e).__name__}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        except Exception as e:
+            logger.error(f"Critical error in llm_response_stream: {type(e).__name__}")
+            yield f"data: {json.dumps({'error': 'Internal server error'})}\n\n"
+    
+    return StreamingResponse(generate(), media_type="text/event-stream")
     
 
 
@@ -230,21 +209,18 @@ async def llm_response(thread_id: str, request: ChatRequest):
 @app.post("/chat/")
 async def chat_invoke(request: Request):
     """
-    POST endpoint to get a single, complete chat response.
+    POST endpoint to stream chat response.
     """
-    # Log request without exposing sensitive data
     logger.info("Chat request received")
     
     try:
         data = await request.json()
         
-        # Validate input length
         if len(data.get('input', '')) > 10000:
             raise HTTPException(status_code=400, detail="Input too long")
         
         chat_request = ChatRequest(**data)
         
-        # Validate CSRF token
         if chat_request.csrf_token not in csrf_tokens:
             raise HTTPException(status_code=403, detail="Invalid CSRF token")
         csrf_tokens.discard(chat_request.csrf_token)
@@ -255,19 +231,16 @@ async def chat_invoke(request: Request):
         logger.error(f"Validation error: {type(e).__name__}")
         raise HTTPException(status_code=422, detail="Invalid request format")
     
-    # Get IP from the raw Request object
     ip = request.client.host
     logger.info(f"User IP is: {ip}")
     
-    # Get data from the Pydantic body model (now named 'chat_request')
     client_details = chat_request.client_data
     logger.info(f"Client details received: {len(str(client_details)) if client_details else 0} chars")
 
     thread_id = chat_request.thread_id
     logger.info(f"Received request for thread: {thread_id}")
     
-    # Pass the Pydantic model to your logic function
-    return await llm_response(thread_id, chat_request)
+    return await llm_response_stream(thread_id, chat_request)
 
 
 
