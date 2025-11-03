@@ -26,4 +26,4 @@ def get_current_time(timezone: str = 'UTC') -> str:
     except pytz.exceptions.UnknownTimeZoneError:
         return "Error: Unknown timezone. Please use a valid IANA timezone string (e.g., 'America/Los_Angeles')."
     except Exception:
-        return "Error: Unable to get current time."
+        return "Error: Unable to get current time." 
