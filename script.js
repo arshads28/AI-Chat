@@ -187,42 +187,47 @@ function updateChatHistory() {
     const sortedChats = Object.values(chats).sort((a, b) => b.timestamp - a.timestamp);
     
     sortedChats.forEach(chat => {
-        const chatItem = document.createElement('div');
-        chatItem.className = `chat-item px-3 py-2 rounded-lg mb-1 flex items-center justify-between group ${chat.id === getCurrentChatId() ? 'active' : ''}`;
-        chatItem.innerHTML = `
-            <div class="flex items-center gap-2 flex-1 min-w-0">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-                </svg>
-                <span class="text-sm truncate">${chat.title}</span>
-            </div>
-            <button class="delete-chat opacity-0 group-hover:opacity-100 p-1 hover:bg-gray-700 rounded" data-chat-id="${chat.id}">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polyline points="3 6 5 6 21 6"></polyline>
-                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                </svg>
-            </button>
-        `;
-        
-        chatItem.addEventListener('click', async (e) => {
-            if (!e.target.closest('.delete-chat')) {
-                // Load chat history from backend when clicking on chat item
-                if (chat.threadId && chat.messages.length === 0) {
-                    await loadChatHistoryFromBackend(chat.threadId, chat.id);
-                } else {
-                    loadChat(chat.id);
-                }
-            }
-        });
-        
-        const deleteBtn = chatItem.querySelector('.delete-chat');
-        deleteBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            deleteChat(chat.id);
-        });
-        
-        chatHistory.appendChild(chatItem);
+        addChatItemToHistory(chat);
     });
+}
+
+// Helper function to add a single chat item to history
+function addChatItemToHistory(chat) {
+    const chatItem = document.createElement('div');
+    chatItem.className = `chat-item px-3 py-2 rounded-lg mb-1 flex items-center justify-between group ${chat.id === getCurrentChatId() ? 'active' : ''}`;
+    chatItem.innerHTML = `
+        <div class="flex items-center gap-2 flex-1 min-w-0">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+            </svg>
+            <span class="text-sm truncate">${chat.title}</span>
+        </div>
+        <button class="delete-chat opacity-0 group-hover:opacity-100 p-1 hover:bg-gray-700 rounded" data-chat-id="${chat.id}">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
+        </button>
+    `;
+    
+    chatItem.addEventListener('click', async (e) => {
+        if (!e.target.closest('.delete-chat')) {
+            if (chat.threadId && chat.messages.length === 0) {
+                await loadChatHistoryFromBackend(chat.threadId, chat.id);
+            } else {
+                loadChat(chat.id);
+            }
+        }
+    });
+    
+    const deleteBtn = chatItem.querySelector('.delete-chat');
+    deleteBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        deleteChat(chat.id);
+    });
+    
+    chatHistory.appendChild(chatItem);
+    return chatItem;
 }
 
 // Delete chat
@@ -363,21 +368,31 @@ async function loadAllChatsFromBackend() {
         if (response.ok) {
             const data = await response.json();
             if (data.chats && data.chats.length > 0) {
-                // Clear existing chats and load from backend
-                chats = {};
-                
-                data.chats.forEach(chatData => {
+                // Add new chats from backend without clearing existing ones
+                data.chats.forEach((chatData, index) => {
                     const chatId = 'chat_' + chatData.thread_id;
-                    chats[chatId] = {
-                        id: chatId,
-                        threadId: chatData.thread_id,
-                        title: chatData.title,
-                        messages: [],
-                        timestamp: chatData.timestamp
-                    };
+                    if (!chats[chatId]) {
+                        chats[chatId] = {
+                            id: chatId,
+                            threadId: chatData.thread_id,
+                            title: chatData.title,
+                            messages: [],
+                            timestamp: chatData.timestamp
+                        };
+                        
+                        // Add to sidebar with smooth animation
+                        setTimeout(() => {
+                            const chatItem = addChatItemToHistory(chats[chatId]);
+                            chatItem.style.opacity = '0';
+                            chatItem.style.transform = 'translateX(-10px)';
+                            setTimeout(() => {
+                                chatItem.style.transition = 'all 0.3s ease';
+                                chatItem.style.opacity = '1';
+                                chatItem.style.transform = 'translateX(0)';
+                            }, 10);
+                        }, index * 100);
+                    }
                 });
-                
-                updateChatHistory();
             }
         }
     } catch (error) {
@@ -576,14 +591,16 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e)
 const urlParams = new URLSearchParams(window.location.search);
 const urlThreadId = urlParams.get('thread_id');
 
-loadAllChatsFromBackend().then(() => {
-    // Load existing chat from URL or create new one
-    if (urlThreadId) {
-        // If URL has thread_id, load that specific chat
-        loadChatFromURL();
-    } else {
-        // Otherwise create new blank chat on startup
-        createNewChat();
-    }
-    if (messageInput) messageInput.focus();
-});
+// Load existing chat from URL or create new one
+if (urlThreadId) {
+    // If URL has thread_id, load that specific chat
+    loadChatFromURL();
+} else {
+    // Otherwise create new blank chat on startup
+    createNewChat();
+}
+
+// Load all chats from backend
+loadAllChatsFromBackend();
+
+if (messageInput) messageInput.focus();

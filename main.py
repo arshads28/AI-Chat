@@ -4,6 +4,7 @@ import uvicorn
 import uuid
 import aiosqlite
 import secrets
+import asyncio
 
 from fastapi import FastAPI, HTTPException, Request, Depends
 from fastapi.responses import StreamingResponse, HTMLResponse, RedirectResponse 
@@ -124,6 +125,9 @@ async def get_chat_history(thread_id: str):
 @app.get("/all-chats")
 async def get_all_chats():
     """Get all chat threads from database."""
+    # logger.info(f"time sleep start")
+    # await asyncio.sleep(2)
+    # logger.info(f"time sleep over")
     try:
         # Access the SQLite database directly
         conn = langgraph_app.checkpointer.conn
@@ -302,6 +306,6 @@ if __name__ == "__main__":
         "main:app", 
         host="0.0.0.0", 
         port=port, 
-        reload=False
+        reload=True
     )
 
