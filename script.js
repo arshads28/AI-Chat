@@ -488,6 +488,28 @@ async function handleSubmit(e) {
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let newThreadId = null;
+        let buffer = '';
+        let isStreaming = false;
+
+        // Function to stream buffered text character by character
+        const streamBuffer = async () => {
+            if (isStreaming) return;
+            isStreaming = true;
+            
+            while (buffer.length > 0) {
+                const char = buffer[0];
+                buffer = buffer.slice(1);
+                fullResponse += char;
+                
+                const parsedResponse = marked.parse(fullResponse);
+                assistantMessageDiv.innerHTML = window.DOMPurify ? DOMPurify.sanitize(parsedResponse) : parsedResponse;
+                chatWindow.scrollTop = chatWindow.scrollHeight;
+                
+                await new Promise(resolve => setTimeout(resolve, 10));
+            }
+            
+            isStreaming = false;
+        };
 
         while (true) {
             const {done, value} = await reader.read();
@@ -507,13 +529,15 @@ async function handleSubmit(e) {
                     }
                     
                     if (data.chunk) {
-                        fullResponse += data.chunk;
-                        const parsedResponse = marked.parse(fullResponse);
-                        assistantMessageDiv.innerHTML = window.DOMPurify ? DOMPurify.sanitize(parsedResponse) : parsedResponse;
-                        chatWindow.scrollTop = chatWindow.scrollHeight;
+                        buffer += data.chunk;
+                        if (!isStreaming) streamBuffer();
                     }
                     
                     if (data.done) {
+                        // Wait for buffer to finish
+                        while (buffer.length > 0 || isStreaming) {
+                            await new Promise(resolve => setTimeout(resolve, 50));
+                        }
                         chat.messages.push({ sender: 'assistant', content: fullResponse });
                         chat.timestamp = Date.now();
                     }
