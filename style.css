@@ -151,7 +151,7 @@ body.light-mode {
 
 body.light-mode {
     --chat-item-hover: rgba(255, 255, 255, 0.3);
-    --chat-item-active: rgba(255, 255, 255, 0.5);
+    --chat-item-active: rgba(59, 130, 246, 0.15);
 }
 
 .avatar {
@@ -237,10 +237,10 @@ body.light-mode {
     z-index: 60; /* Higher than sidebar */
 }
 
-/* Light mode styles - Stunning modern design */
+/* Light mode styles - Eye-pleasant for adults */
 body.light-mode {
-    background: linear-gradient(135deg, #c3dad8 0%, #fef7f7 50%, #faf5ff 100%);
-    color: #2d3748;
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 50%, #fefefe 100%);
+    color: #374151;
     position: relative;
 }
 
@@ -252,18 +252,18 @@ body.light-mode::before {
     right: 0;
     bottom: 0;
     background: 
-        radial-gradient(circle at 20% 80%, rgba(168, 237, 234, 0.1) 0%, transparent 50%),
-        radial-gradient(circle at 80% 20%, rgba(254, 214, 227, 0.1) 0%, transparent 50%),
-        radial-gradient(circle at 40% 40%, rgba(210, 153, 194, 0.08) 0%, transparent 50%);
+        radial-gradient(circle at 20% 80%, rgba(59, 130, 246, 0.03) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(139, 92, 246, 0.02) 0%, transparent 50%),
+        radial-gradient(circle at 40% 40%, rgba(99, 102, 241, 0.02) 0%, transparent 50%);
     pointer-events: none;
     z-index: -1;
 }
 
 body.light-mode .bg-gray-950 { 
-    background: rgba(233, 249, 255, 0.708);
+    background: rgba(248, 250, 252, 0.85);
     backdrop-filter: blur(20px);
-    border-right: 1px solid rgba(0, 0, 0, 0.1);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.229);
+    border-right: 1px solid rgba(0, 0, 0, 0.08);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
 }
 body.light-mode .bg-gray-900 { background: transparent; }
 body.light-mode .bg-gray-800 { 
@@ -273,11 +273,22 @@ body.light-mode .bg-gray-800 {
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
 }
 body.light-mode .bg-gray-700 { 
-    background: rgba(255, 255, 255, 0.3);
+    background: rgba(241, 245, 249, 0.6);
     backdrop-filter: blur(15px);
-    border: 1px solid rgba(255, 255, 255, 0.4);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.15);
+    box-shadow: 0 4px 16px rgba(59, 130, 246, 0.08), 0 0 0 1px rgba(59, 130, 246, 0.05) inset;
 }
+
+/* Input focus styles */
+#input-container:focus-within {
+    border: 2px solid #3b82f6 !important;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1), 0 4px 16px rgba(59, 130, 246, 0.2) !important;
+}
+
+/* body.light-mode #input-container:focus-within {
+    border: 2px solid #3b82f6 !important;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1), 0 4px 16px rgba(59, 130, 246, 0.2) !important;
+} */
 body.light-mode .bg-gray-600 { 
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
@@ -285,9 +296,9 @@ body.light-mode .bg-gray-600 {
 body.light-mode .border-gray-800 { border-color: rgba(255, 255, 255, 0.3); }
 body.light-mode .border-gray-700 { border-color: rgba(255, 255, 255, 0.4); }
 body.light-mode .border-gray-600 { border-color: rgba(255, 255, 255, 0.4); }
-body.light-mode .text-white { color: #2d3748; font-weight: 500; }
-body.light-mode .text-gray-100 { color: #2d3748; }
-body.light-mode .text-gray-400 { color: #718096; }
+body.light-mode .text-white { color: #374151; font-weight: 500; }
+body.light-mode .text-gray-100 { color: #374151; }
+body.light-mode .text-gray-400 { color: #6b7280; }
 body.light-mode .hover\:bg-gray-800:hover { 
     background: rgba(255, 255, 255, 0.5);
     transform: translateY(-1px);
@@ -430,7 +441,7 @@ body:not(.light-mode) {
     --scroll-thumb: rgba(82, 82, 82, 0.8);
     --scroll-thumb-hover: rgba(115, 115, 115, 0.9);
     --chat-item-hover: rgba(38, 38, 38, 0.6);
-    --chat-item-active: rgba(64, 64, 64, 0.7);
+    --chat-item-active: rgba(59, 130, 246, 0.2);
 }
 /* Hide all scrollbars */
 * {
