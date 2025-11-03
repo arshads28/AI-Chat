@@ -84,103 +84,77 @@ async def get_csrf_token():
 
 @app.get("/chat-history/{thread_id}")
 async def get_chat_history(thread_id: str):
-    """Get chat history for a specific thread."""
-    logger.info(f"chat-history function")
-    try:
-        config = {"configurable": {"thread_id": thread_id}}
-        state = await langgraph_app.aget_state(config)
-        
-        messages = []
-        if state and state.values and 'messages' in state.values:
-            for msg in state.values['messages']:
-                ai_typ = msg.__class__.__name__
-                
-                if ai_typ =='HumanMessage':
-                    sender = 'user'
-
-                elif ai_typ == 'AIMessage':
-
-                    if hasattr(msg, 'tool_calls') and msg.tool_calls:
-                        continue
-                    sender = 'assistant'
-
-                elif ai_typ == 'ToolMessage':
-                    continue
-                else:
-                    # Skip other types like SystemMessage
-                    continue
-                
-                if hasattr(msg, 'content'):
-                    
-                    messages.append({
-                        'sender': sender,
-                        'content': msg.content
-                    })
-        
-        return {"messages": messages, "thread_id": thread_id}
-    except Exception as e:
-        logger.error(f"Error fetching chat history: {type(e).__name__}")
-        return {"messages": [], "thread_id": thread_id}
-
-@app.get("/all-chats")
-async def get_all_chats():
-    """Get all chat threads from database."""
-    # logger.info(f"time sleep start")
-    # await asyncio.sleep(2)
-    # logger.info(f"time sleep over")
-    try:
-        # Access the SQLite database directly
-        conn = langgraph_app.checkpointer.conn
-        
-        # Debug: Check what tables exist
-        cursor = await conn.execute("SELECT name FROM sqlite_master WHERE type='table';")
-        tables = await cursor.fetchall()
-        logger.info(f"Available tables: {tables}")
-        
-        # Get all thread IDs ordered by timestamp
-        cursor = await conn.execute(
-            "SELECT thread_id, MAX(checkpoint) as latest_checkpoint FROM checkpoints GROUP BY thread_id ORDER BY latest_checkpoint "
-        )
-        rows = await cursor.fetchall()
-        logger.info(f"table is {rows}")
-        logger.info(f"Found {len(rows)} thread_ids: {rows}")
-        
-        chats = []
-        for row in rows:
-            thread_id = row[0]
-            # logger.info(f"Processing thread_id: {thread_id}")
-            
-            # Get first user message for title
+    """Stream chat history for a specific thread."""
+    async def generate():
+        try:
             config = {"configurable": {"thread_id": thread_id}}
             state = await langgraph_app.aget_state(config)
             
-            title = "New Chat"
-            timestamp = 0
             if state and state.values and 'messages' in state.values:
                 for msg in state.values['messages']:
-                    if hasattr(msg, 'content') and msg.__class__.__name__ == 'HumanMessage':
-                        title = msg.content[:30] + ('...' if len(msg.content) > 30 else '')
-                        break
-                # Extract timestamp from checkpoint data
-                try:
-                    import json
-                    checkpoint_data = json.loads(row[1]) if isinstance(row[1], str) else row[1]
-                    timestamp = int(checkpoint_data.get('ts', 0))
-                except:
-                    import time
-                    timestamp = int(time.time() * 1000)
+                    ai_typ = msg.__class__.__name__
+                    
+                    if ai_typ == 'HumanMessage':
+                        sender = 'user'
+                    elif ai_typ == 'AIMessage':
+                        if hasattr(msg, 'tool_calls') and msg.tool_calls:
+                            continue
+                        sender = 'assistant'
+                    elif ai_typ == 'ToolMessage':
+                        continue
+                    else:
+                        continue
+                    
+                    if hasattr(msg, 'content'):
+                        yield f"data: {json.dumps({'sender': sender, 'content': msg.content})}\n\n"
+                        await asyncio.sleep(0.01)
             
-            chats.append({
-                'thread_id': thread_id,
-                'title': title,
-                'timestamp': timestamp
-            })
-        
-        logger.info(f"Returning {len(chats)} chats")
-        return {"chats": chats}
-    except Exception as e:
-        logger.error(f"Error fetching all chats: {type(e).__name__}: {str(e)}")
-        return {"chats": []}
+            yield f"data: {json.dumps({'done': True, 'thread_id': thread_id})}\n\n"
+        except Exception as e:
+            logger.error(f"Error fetching chat history: {type(e).__name__}")
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+    
+    return StreamingResponse(generate(), media_type="text/event-stream")
+
+@app.get("/all-chats")
+async def get_all_chats():
+    """Stream all chat threads from database."""
+    async def generate():
+        try:
+            conn = langgraph_app.checkpointer.conn
+            cursor = await conn.execute(
+                "SELECT thread_id, MAX(checkpoint) as latest_checkpoint FROM checkpoints GROUP BY thread_id ORDER BY latest_checkpoint"
+            )
+            rows = await cursor.fetchall()
+            
+            for row in rows:
+                thread_id = row[0]
+                config = {"configurable": {"thread_id": thread_id}}
+                state = await langgraph_app.aget_state(config)
+                
+                title = "New Chat"
+                timestamp = 0
+                if state and state.values and 'messages' in state.values:
+                    for msg in state.values['messages']:
+                        if hasattr(msg, 'content') and msg.__class__.__name__ == 'HumanMessage':
+                            title = msg.content[:30] + ('...' if len(msg.content) > 30 else '')
+                            break
+                    try:
+                        checkpoint_data = json.loads(row[1]) if isinstance(row[1], str) else row[1]
+                        timestamp = int(checkpoint_data.get('ts', 0))
+                    except:
+                        import time
+                        timestamp = int(time.time() * 1000)
+                
+                yield f"data: {json.dumps({'thread_id': thread_id, 'title': title, 'timestamp': timestamp})}\n\n"
+                await asyncio.sleep(0.01)
+            
+            yield f"data: {json.dumps({'done': True})}\n\n"
+        except Exception as e:
+            logger.error(f"Error fetching all chats: {type(e).__name__}: {str(e)}")
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+    
+    return StreamingResponse(generate(), media_type="text/event-stream")
 
  
 

@@ -335,25 +335,31 @@ async function getCSRFToken() {
 async function loadChatHistoryFromBackend(threadId, chatId) {
     try {
         const response = await fetch(`/chat-history/${threadId}`);
-        if (response.ok) {
-            const data = await response.json();
-            if (data.messages && data.messages.length > 0) {
-                const chat = chats[chatId];
-                if (chat) {
-                    // Clear existing messages except the user message we just added
-                    const lastUserMessage = chat.messages[chat.messages.length - 1];
-                    chat.messages = data.messages;
-                    
-                    // Re-add the current user message if it's not in history
-                    if (lastUserMessage && lastUserMessage.sender === 'user') {
-                        const lastHistoryMessage = data.messages[data.messages.length - 1];
-                        if (!lastHistoryMessage || lastHistoryMessage.content !== lastUserMessage.content) {
-                            chat.messages.push(lastUserMessage);
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        const chat = chats[chatId];
+        
+        if (chat) {
+            chat.messages = [];
+            
+            while (true) {
+                const {done, value} = await reader.read();
+                if (done) break;
+                
+                const chunk = decoder.decode(value);
+                const lines = chunk.split('\n');
+                
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        const data = JSON.parse(line.slice(6));
+                        if (data.done) {
+                            loadChat(chatId);
+                            return;
+                        }
+                        if (data.sender && data.content) {
+                            chat.messages.push({sender: data.sender, content: data.content});
                         }
                     }
-                    
-                    // Reload the chat display
-                    loadChat(chatId);
                 }
             }
         }
@@ -365,34 +371,47 @@ async function loadChatHistoryFromBackend(threadId, chatId) {
 async function loadAllChatsFromBackend() {
     try {
         const response = await fetch('/all-chats');
-        if (response.ok) {
-            const data = await response.json();
-            if (data.chats && data.chats.length > 0) {
-                // Add new chats from backend without clearing existing ones
-                data.chats.forEach((chatData, index) => {
-                    const chatId = 'chat_' + chatData.thread_id;
-                    if (!chats[chatId]) {
-                        chats[chatId] = {
-                            id: chatId,
-                            threadId: chatData.thread_id,
-                            title: chatData.title,
-                            messages: [],
-                            timestamp: chatData.timestamp
-                        };
-                        
-                        // Add to sidebar with smooth animation
-                        setTimeout(() => {
-                            const chatItem = addChatItemToHistory(chats[chatId]);
-                            chatItem.style.opacity = '0';
-                            chatItem.style.transform = 'translateX(-10px)';
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let index = 0;
+        
+        while (true) {
+            const {done, value} = await reader.read();
+            if (done) break;
+            
+            const chunk = decoder.decode(value);
+            const lines = chunk.split('\n');
+            
+            for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                    const data = JSON.parse(line.slice(6));
+                    if (data.done) return;
+                    
+                    if (data.thread_id) {
+                        const chatId = 'chat_' + data.thread_id;
+                        if (!chats[chatId]) {
+                            chats[chatId] = {
+                                id: chatId,
+                                threadId: data.thread_id,
+                                title: data.title,
+                                messages: [],
+                                timestamp: data.timestamp
+                            };
+                            
                             setTimeout(() => {
-                                chatItem.style.transition = 'all 0.3s ease';
-                                chatItem.style.opacity = '1';
-                                chatItem.style.transform = 'translateX(0)';
-                            }, 10);
-                        }, index * 100);
+                                const chatItem = addChatItemToHistory(chats[chatId]);
+                                chatItem.style.opacity = '0';
+                                chatItem.style.transform = 'translateX(-10px)';
+                                setTimeout(() => {
+                                    chatItem.style.transition = 'all 0.3s ease';
+                                    chatItem.style.opacity = '1';
+                                    chatItem.style.transform = 'translateX(0)';
+                                }, 10);
+                            }, index * 100);
+                            index++;
+                        }
                     }
-                });
+                }
             }
         }
     } catch (error) {
