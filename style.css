@@ -204,6 +204,10 @@ body.light-mode {
         padding-bottom: env(safe-area-inset-bottom);
     }
     
+    footer {
+        padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+    }
+    
     .sidebar {
         position: fixed;
         left: 0;
@@ -228,7 +232,8 @@ body.light-mode {
     }
     
     .main-content {
-        margin-left: 0; 
+        margin-left: 0;
+        padding-bottom: env(safe-area-inset-bottom, 0px);
     }
 }
 
