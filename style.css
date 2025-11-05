@@ -232,6 +232,11 @@ body.light-mode {
     }
 }
 
+footer {
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+}
+
+
 #toggle-sidebar {
     position: relative;
     z-index: 60; /* Higher than sidebar */
