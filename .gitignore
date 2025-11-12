@@ -23,6 +23,7 @@ Thumbs.db
 *.log.2
 # Ignore virtual environment
 .venv/
+.venv310/
 
 # (Optional) Other common ignores
 __pycache__/
