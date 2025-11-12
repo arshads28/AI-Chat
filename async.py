@@ -13,10 +13,15 @@ async def background_task():
     except asyncio.CancelledError:
         print("--- Background task CANCELLED ---")
 
+async def hello():
+    print("Hello")
+    await asyncio.sleep(2) # Simulates a 1-second DB call
+    print("World!")
 
 async def fetch_user(id):
     print(f"Starting to fetch user {id}...")
-    await asyncio.sleep(2) # Simulates a 2-second DB call
+    await hello()
+    # await asyncio.sleep(2) # Simulates a 2-second DB call
     print(f"Finished fetching user {id}.")
     return f"User {id}"
 
@@ -32,15 +37,15 @@ async def main():
     bg_task = asyncio.create_task(background_task())
 
     
-    await fetch_user(1) 
+    # await fetch_user(11111) 
     
-    await fetch_posts(1) 
+    # await fetch_posts(55555) 
 
 
-    # await asyncio.gather(
-    #     fetch_user(1),
-    #     fetch_posts(1)
-    # )
+    await asyncio.gather(
+        fetch_user(11111111111111111),
+        fetch_posts(55555555555555555)
+    )
 
     bg_task.cancel()
     
